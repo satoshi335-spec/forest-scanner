@@ -260,28 +260,29 @@ function SaveModal({ measurement, trees, onSave, onSkip }) {
 // PDF 出力
 // ================================================================
 function printPDF(targets) {
-  const rows = targets.map(t => {
+  // 2列×2行グリッド（4本ずつ1ページ）
+  const cards = targets.map(t => {
     const m = t.measurements || {};
     return `
-      <div class="carte">
-        <div class="carte-header">
-          ${t.photo ? `<img src="${t.photo}" class="thumb" />` : '<div class="no-photo">🌳</div>'}
-          <div class="carte-info">
-            <h2>${t.name}</h2>
-            <div class="tags">
-              ${t.species ? `<span class="tag green">${t.species}</span>` : ""}
-              ${t.location ? `<span class="tag blue">${t.location}</span>` : ""}
-            </div>
-            <p class="date">登録：${t.createdAt}　更新：${t.updatedAt}</p>
-            ${t.gps ? `<p class="date">📍 ${t.gps.lat}, ${t.gps.lng}</p>` : ""}
-            ${t.note ? `<p class="note">${t.note}</p>` : ""}
+      <div class="card">
+        ${t.photo
+          ? `<img src="${t.photo}" class="photo" />`
+          : `<div class="no-photo">🌳</div>`}
+        <div class="card-body">
+          <h2>${t.name}</h2>
+          <div class="tags">
+            ${t.species ? `<span class="tag green">${t.species}</span>` : ""}
+            ${t.location ? `<span class="tag blue">${t.location}</span>` : ""}
           </div>
-        </div>
-        <div class="meas-grid">
-          ${m.height ? `<div class="meas-item"><span class="meas-label">樹高</span><span class="meas-val">${m.height}<small>m</small></span></div>` : ""}
-          ${m.spread ? `<div class="meas-item"><span class="meas-label">枝張り</span><span class="meas-val">${m.spread}<small>m</small></span></div>` : ""}
-          ${m.trunk  ? `<div class="meas-item"><span class="meas-label">幹周り</span><span class="meas-val">${m.trunk}<small>cm</small></span></div>` : ""}
-          ${m.age    ? `<div class="meas-item"><span class="meas-label">推定樹齢</span><span class="meas-val">${m.age}<small>年</small></span></div>` : ""}
+          ${t.gps ? `<p class="gps">📍 ${t.gps.lat}, ${t.gps.lng}</p>` : ""}
+          ${t.note ? `<p class="note">${t.note}</p>` : ""}
+          <div class="meas-grid">
+            ${m.height ? `<div class="meas-item"><span class="ml">樹高</span><span class="mv">${m.height}<small>m</small></span></div>` : ""}
+            ${m.spread ? `<div class="meas-item"><span class="ml">枝張り</span><span class="mv">${m.spread}<small>m</small></span></div>` : ""}
+            ${m.trunk  ? `<div class="meas-item"><span class="ml">幹周り</span><span class="mv">${m.trunk}<small>cm</small></span></div>` : ""}
+            ${m.age    ? `<div class="meas-item"><span class="ml">推定樹齢</span><span class="mv">${m.age}<small>年</small></span></div>` : ""}
+          </div>
+          <p class="date">登録：${t.createdAt}</p>
         </div>
       </div>`;
   }).join("");
@@ -289,31 +290,38 @@ function printPDF(targets) {
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"/>
   <title>大きな木 測定レポート</title>
   <style>
-    body { font-family: 'Hiragino Mincho ProN', Georgia, serif; background: #fff; color: #1a2a1a; margin: 0; padding: 20px; }
-    h1 { font-size: 20px; color: #2d6a4f; border-bottom: 2px solid #2d6a4f; padding-bottom: 8px; margin-bottom: 4px; }
-    .meta { font-size: 11px; color: #888; margin-bottom: 24px; }
-    .carte { border: 1px solid #cde8d8; border-radius: 10px; padding: 16px; margin-bottom: 20px; page-break-inside: avoid; }
-    .carte-header { display: flex; gap: 14px; margin-bottom: 12px; }
-    .thumb { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; flex-shrink: 0; border: 1px solid #cde8d8; }
-    .no-photo { width: 100px; height: 100px; background: #f0f7f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 36px; flex-shrink: 0; }
-    .carte-info { flex: 1; }
-    .carte-info h2 { font-size: 18px; color: #1a3a2a; margin: 0 0 6px; }
-    .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 5px; }
-    .tag { font-size: 11px; border-radius: 20px; padding: 2px 10px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Hiragino Mincho ProN', Georgia, serif; background: #fff; color: #1a2a1a; padding: 16px; }
+    header { display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #2d6a4f; padding-bottom: 10px; margin-bottom: 6px; }
+    header h1 { font-size: 20px; color: #2d6a4f; }
+    .meta { font-size: 11px; color: #888; margin-bottom: 16px; }
+    /* 2列グリッド */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .card { border: 1px solid #cde8d8; border-radius: 12px; overflow: hidden; page-break-inside: avoid; display: flex; flex-direction: column; }
+    .photo { width: 100%; height: 180px; object-fit: cover; display: block; }
+    .no-photo { width: 100%; height: 180px; background: #f0f7f0; display: flex; align-items: center; justify-content: center; font-size: 52px; }
+    .card-body { padding: 10px 12px 12px; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .card-body h2 { font-size: 15px; color: #1a3a2a; font-weight: bold; }
+    .tags { display: flex; gap: 5px; flex-wrap: wrap; }
+    .tag { font-size: 10px; border-radius: 20px; padding: 2px 8px; }
     .tag.green { background: #e8f5ee; color: #2d6a4f; border: 1px solid #b0d8c0; }
     .tag.blue  { background: #e8f0f8; color: #2a4a6a; border: 1px solid #b0c8e0; }
-    .date { font-size: 11px; color: #888; margin: 0 0 4px; }
-    .note { font-size: 12px; color: #555; margin: 4px 0 0; line-height: 1.6; }
-    .meas-grid { display: flex; gap: 10px; flex-wrap: wrap; }
-    .meas-item { background: #f0f7f0; border-radius: 8px; padding: 8px 14px; text-align: center; min-width: 72px; }
-    .meas-label { font-size: 10px; color: #666; display: block; margin-bottom: 2px; }
-    .meas-val { font-size: 22px; font-weight: bold; color: #2d6a4f; }
-    .meas-val small { font-size: 12px; font-weight: normal; color: #888; margin-left: 2px; }
-    @media print { body { padding: 0; } }
+    .gps { font-size: 10px; color: #2d6a4f; }
+    .note { font-size: 11px; color: #555; line-height: 1.5; }
+    .meas-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .meas-item { background: #f0f7f0; border-radius: 6px; padding: 5px 8px; text-align: center; flex: 1; min-width: 52px; }
+    .ml { font-size: 9px; color: #666; display: block; margin-bottom: 1px; }
+    .mv { font-size: 17px; font-weight: bold; color: #2d6a4f; }
+    .mv small { font-size: 10px; font-weight: normal; color: #888; margin-left: 1px; }
+    .date { font-size: 10px; color: #aaa; margin-top: auto; padding-top: 4px; }
+    @media print {
+      body { padding: 8px; }
+      .grid { gap: 10px; }
+    }
   </style></head><body>
-  <h1>🌳 大きな木 測定レポート</h1>
+  <header><span style="font-size:24px;">🌳</span><h1>大きな木 測定レポート</h1></header>
   <p class="meta">出力日：${today()}　登録本数：${targets.length}本</p>
-  ${rows}
+  <div class="grid">${cards}</div>
   <p style="font-size:10px; color:#888; margin-top:28px; border-top:1px solid #e0e0e0; padding-top:12px; line-height:1.8;">
     ※ 推定樹齢は幹周り÷樹種別年間成長量による参考値です。実際の樹齢は立地・気候・管理条件により大きく異なります。<br>
     ※ 参考：国土技術政策総合研究所「公園樹木管理の高度化に関する研究」・日本緑化センター資料に基づく概算値。<br>
@@ -734,7 +742,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:8, marginBottom:14 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
             <button onClick={onBack} style={{ background:"none", border:"none", color:"#2d6a4f", fontSize:22, cursor:"pointer", padding:0 }}>‹</button>
-            <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>木のアルバム</h2>
+            <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>大きな木のアルバム</h2>
           </div>
           {trees.length>0&&<button onClick={() => setShowPdf(true)} style={{ fontSize:12, color:GOLD, background:"rgba(255,209,102,0.1)", border:`1px solid rgba(255,209,102,0.35)`, borderRadius:8, padding:"6px 12px", cursor:"pointer", fontFamily:"inherit" }}>📄 PDF出力</button>}
         </div>
@@ -965,6 +973,11 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
             </p>
           </div>}
         </div>}
+        {/* 画像保存ボタン */}
+        <button onClick={() => saveTreeImage(cur)}
+          style={{ width:"100%", padding:"13px", background:"rgba(126,203,161,0.15)", border:`1px solid ${GRN}`, borderRadius:12, color:GRN, fontSize:14, cursor:"pointer", marginBottom:8, fontFamily:"inherit", letterSpacing:1 }}>
+          📸　写真アルバムに保存する
+        </button>
         {/* 詳細画面からも測定ボタン */}
         <div style={{ display:"flex", gap:6, marginBottom:8, flexWrap:"wrap" }}>
           <button onClick={() => onMeasureHeight(cur.id)} style={{ flex:1, padding:"11px 6px", background:"rgba(116,179,206,0.1)", border:`1px solid ${BLUE}`, borderRadius:12, color:BLUE, fontSize:12, cursor:"pointer", fontFamily:"inherit", minWidth:80 }}>📐 樹高</button>
@@ -976,6 +989,191 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
   );
 }
 
+
+
+// ================================================================
+// 画像保存（Canvas合成）
+// ================================================================
+async function saveTreeImage(tree) {
+  const m = tree.measurements || {};
+
+  const canvas = document.createElement("canvas");
+  const W = 1080, H = 1350; // 4:5 縦長（Instagram風）
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // 背景グラデーション
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#0c1820");
+  bg.addColorStop(0.5, "#1a2e3a");
+  bg.addColorStop(1, "#0a1f14");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // 写真を描画
+  if (tree.photo) {
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const ph = H * 0.52;
+        // cover fit
+        const scale = Math.max(W / img.width, ph / img.height);
+        const sw = img.width * scale, sh = img.height * scale;
+        const sx = (W - sw) / 2, sy = (ph - sh) / 2;
+        ctx.drawImage(img, sx, sy, sw, sh);
+        // 写真下部グラデーションオーバーレイ
+        const ov = ctx.createLinearGradient(0, ph * 0.5, 0, ph);
+        ov.addColorStop(0, "rgba(10,31,20,0)");
+        ov.addColorStop(1, "rgba(10,31,20,0.9)");
+        ctx.fillStyle = ov;
+        ctx.fillRect(0, 0, W, ph);
+        resolve();
+      };
+      img.onerror = resolve;
+      img.src = tree.photo;
+    });
+  } else {
+    // 写真なし：緑の背景に絵文字
+    ctx.fillStyle = "rgba(45,106,79,0.3)";
+    ctx.fillRect(0, 0, W, H * 0.52);
+    ctx.font = "200px serif";
+    ctx.textAlign = "center";
+    ctx.fillText("🌳", W / 2, H * 0.28);
+  }
+
+  const PH = H * 0.52; // 写真エリア高さ
+
+  // アプリ名（左上）
+  ctx.font = "bold 36px 'Hiragino Mincho ProN', Georgia, serif";
+  ctx.fillStyle = "rgba(126,203,161,0.9)";
+  ctx.textAlign = "left";
+  ctx.fillText("大きな木", 48, 56);
+
+  // 木の名前（写真下部）
+  ctx.font = "bold 72px 'Hiragino Mincho ProN', Georgia, serif";
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "left";
+  ctx.shadowColor = "rgba(0,0,0,0.8)";
+  ctx.shadowBlur = 12;
+  // 長い名前は折り返し
+  const nameWords = tree.name;
+  if (ctx.measureText(nameWords).width > W - 96) {
+    ctx.font = "bold 54px 'Hiragino Mincho ProN', Georgia, serif";
+  }
+  ctx.fillText(nameWords, 48, PH - 80);
+  ctx.shadowBlur = 0;
+
+  // 樹種・場所タグ
+  ctx.font = "32px 'Hiragino Mincho ProN', Georgia, serif";
+  ctx.fillStyle = "#7ecba1";
+  ctx.textAlign = "left";
+  let tagX = 48;
+  if (tree.species) {
+    ctx.fillText("🌿 " + tree.species, tagX, PH - 34);
+    tagX += ctx.measureText("🌿 " + tree.species).width + 24;
+  }
+  if (tree.location) {
+    ctx.fillStyle = "#74b3ce";
+    ctx.fillText("📍 " + tree.location, tagX, PH - 34);
+  }
+
+  // 区切り線
+  ctx.strokeStyle = "rgba(126,203,161,0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(48, PH + 20);
+  ctx.lineTo(W - 48, PH + 20);
+  ctx.stroke();
+
+  // 測定値グリッド
+  const measItems = [
+    m.height ? { label: "樹　高", value: m.height, unit: "m", color: "#7ecba1" } : null,
+    m.spread ? { label: "枝張り", value: m.spread, unit: "m", color: "#ffd166" } : null,
+    m.trunk  ? { label: "幹周り", value: m.trunk,  unit: "cm", color: "#74b3ce" } : null,
+    m.age    ? { label: "推定樹齢", value: m.age,  unit: "年", color: "#c4a882" } : null,
+  ].filter(Boolean);
+
+  if (measItems.length > 0) {
+    const cols = Math.min(measItems.length, 2);
+    const rows = Math.ceil(measItems.length / cols);
+    const cellW = (W - 96 - (cols - 1) * 24) / cols;
+    const cellH = 160;
+    const startY = PH + 44;
+
+    measItems.forEach((item, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = 48 + col * (cellW + 24);
+      const y = startY + row * (cellH + 16);
+
+      // セル背景
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      roundRect(ctx, x, y, cellW, cellH, 16);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(126,203,161,0.2)";
+      ctx.lineWidth = 1;
+      roundRect(ctx, x, y, cellW, cellH, 16);
+      ctx.stroke();
+
+      // ラベル
+      ctx.font = "28px 'Hiragino Mincho ProN', Georgia, serif";
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.textAlign = "center";
+      ctx.fillText(item.label, x + cellW / 2, y + 42);
+
+      // 値
+      ctx.font = "bold 80px 'Hiragino Mincho ProN', Georgia, serif";
+      ctx.fillStyle = item.color;
+      ctx.textAlign = "center";
+      ctx.fillText(item.value, x + cellW / 2, y + 120);
+
+      // 単位
+      ctx.font = "28px 'Hiragino Mincho ProN', Georgia, serif";
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      const vw = ctx.measureText(item.value).width;
+      ctx.font = "bold 80px 'Hiragino Mincho ProN', Georgia, serif";
+      const vw2 = ctx.measureText(item.value).width;
+      ctx.font = "28px sans-serif";
+      ctx.fillText(item.unit, x + cellW / 2 + vw2 / 2 + 10, y + 116);
+    });
+  }
+
+  // 日付・出典
+  const bottomY = H - 48;
+  ctx.font = "26px 'Hiragino Mincho ProN', Georgia, serif";
+  ctx.fillStyle = "rgba(126,203,161,0.5)";
+  ctx.textAlign = "left";
+  ctx.fillText("記録日：" + tree.updatedAt, 48, bottomY);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "rgba(126,203,161,0.35)";
+  ctx.fillText("大きな木 App", W - 48, bottomY);
+
+  // PNG ダウンロード
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = (tree.name || "tree") + "_記録.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }, "image/png");
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
 
 // ================================================================
 // MAP APP（地図表示）
@@ -1064,7 +1262,7 @@ function MapApp({ trees, onSelectTree, onBack }) {
     <div>
       <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:12 }}>
         <button onClick={onBack} style={{ background:"none", border:"none", color:"#2d6a4f", fontSize:22, cursor:"pointer", padding:0 }}>‹</button>
-        <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>木の地図</h2>
+        <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>大きな木の地図</h2>
         <span style={{ fontSize:12, color:"#5a9070", marginLeft:4 }}>{treesWithGPS.length}本表示</span>
       </div>
 
@@ -1169,8 +1367,8 @@ export default function App() {
           {trees.length>0&&<div style={{ background:"rgba(255,255,255,0.9)", border:"1px solid rgba(45,106,79,0.2)", borderRadius:10, padding:"10px 14px", marginBottom:16, boxShadow:"0 2px 8px rgba(45,106,79,0.08)" }}>
             <p style={{ fontSize:12, color:"#2d6a4f", margin:0, fontWeight:"bold" }}>📋 アルバム登録：{trees.length}本　測定済み：{trees.filter(t=>t.measurements?.height).length}本</p>
           </div>}
-          {menuBtn("📋","木のアルバム","写真・測定値を記録・管理・PDF出力",trees.length>0?`${trees.length}本`:null,()=>setMode("carte"))}
-          {menuBtn("🗺️","木の地図","記録した木の場所を地図で確認",trees.filter(t=>t.gps).length>0?`${trees.filter(t=>t.gps).length}本`:null,()=>setMode("map"))}
+          {menuBtn("📋","大きな木のアルバム","写真・測定値を記録・管理・PDF出力",trees.length>0?`${trees.length}本`:null,()=>setMode("carte"))}
+          {menuBtn("🗺️","大きな木の地図","記録した木の場所を地図で確認",trees.filter(t=>t.gps).length>0?`${trees.filter(t=>t.gps).length}本`:null,()=>setMode("map"))}
           {menuBtn("📐","樹高を測定する","カメラで根元・梢を2点ロック",null,()=>{ setPendingTreeId(null); setMode("height"); })}
           {menuBtn("🌿","枝張りを測定する","カメラで左端・右端を2点ロック",null,()=>{ setPendingTreeId(null); setMode("spread"); })}
           {menuBtn("🌲","幹周りを測定する","カメラで幹の左右を2点ロック",null,()=>{ setPendingTreeId(null); setMode("trunk"); })}
