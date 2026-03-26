@@ -272,6 +272,7 @@ function printPDF(targets) {
               ${t.location ? `<span class="tag blue">${t.location}</span>` : ""}
             </div>
             <p class="date">登録：${t.createdAt}　更新：${t.updatedAt}</p>
+            ${t.gps ? `<p class="date">📍 ${t.gps.lat}, ${t.gps.lng}</p>` : ""}
             ${t.note ? `<p class="note">${t.note}</p>` : ""}
           </div>
         </div>
@@ -320,8 +321,18 @@ function printPDF(targets) {
   <script>window.onload = () => window.print();<\/script>
   </body></html>`;
 
-  const w = window.open("", "_blank");
-  if (w) { w.document.write(html); w.document.close(); }
+  // Blob URLで確実に新タブで開く（ポップアップブロック回避）
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // 少し待ってからURLを解放
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 // ================================================================
@@ -358,7 +369,7 @@ function PdfModal({ trees, onClose }) {
           ))}
         </div>
         <button style={{ ...PRI, background: targets.length > 0 ? "#2a4a1a" : "#1a2a1a", borderColor: targets.length > 0 ? GOLD : "#4a7c5a", color: targets.length > 0 ? GOLD : "#4a7c5a", cursor: targets.length > 0 ? "pointer" : "not-allowed" }}
-          onClick={() => { if (targets.length > 0) { printPDF(targets); onClose(); } }}>
+          onClick={() => { if (targets.length > 0) { onClose(); setTimeout(() => printPDF(targets), 100); } }}>
           📄　{targets.length}本のレポートを出力する
         </button>
         <button style={GHO} onClick={onClose}>キャンセル</button>
