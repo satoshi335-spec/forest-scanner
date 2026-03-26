@@ -1169,11 +1169,11 @@ export default function App() {
           {trees.length>0&&<div style={{ background:"rgba(255,255,255,0.9)", border:"1px solid rgba(45,106,79,0.2)", borderRadius:10, padding:"10px 14px", marginBottom:16, boxShadow:"0 2px 8px rgba(45,106,79,0.08)" }}>
             <p style={{ fontSize:12, color:"#2d6a4f", margin:0, fontWeight:"bold" }}>📋 アルバム登録：{trees.length}本　測定済み：{trees.filter(t=>t.measurements?.height).length}本</p>
           </div>}
+          {menuBtn("📋","木のアルバム","写真・測定値を記録・管理・PDF出力",trees.length>0?`${trees.length}本`:null,()=>setMode("carte"))}
+          {menuBtn("🗺️","木の地図","記録した木の場所を地図で確認",trees.filter(t=>t.gps).length>0?`${trees.filter(t=>t.gps).length}本`:null,()=>setMode("map"))}
           {menuBtn("📐","樹高を測定する","カメラで根元・梢を2点ロック",null,()=>{ setPendingTreeId(null); setMode("height"); })}
           {menuBtn("🌿","枝張りを測定する","カメラで左端・右端を2点ロック",null,()=>{ setPendingTreeId(null); setMode("spread"); })}
           {menuBtn("🌲","幹周りを測定する","カメラで幹の左右を2点ロック",null,()=>{ setPendingTreeId(null); setMode("trunk"); })}
-          {menuBtn("📋","木のアルバム","写真・測定値を記録・管理・PDF出力",trees.length>0?`${trees.length}本`:null,()=>setMode("carte"))}
-          {menuBtn("🗺️","木の地図","記録した木の場所を地図で確認",trees.filter(t=>t.gps).length>0?`${trees.filter(t=>t.gps).length}本`:null,()=>setMode("map"))}
         </div>}
 
         {mode==="height"&&<HeightApp prof={prof} trees={trees} onSaveTree={(nt,eid,meas) => { if (pendingTreeId) { updateTrees(trees.map(t => t.id===pendingTreeId ? { ...t, measurements:{ ...t.measurements, ...meas }, updatedAt:today() } : t)); setMode("carte"); } else { onSaveTree(nt,eid,meas); } }} onBack={()=>setMode(null)}/>}
