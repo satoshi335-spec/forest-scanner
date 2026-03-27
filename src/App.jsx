@@ -101,9 +101,9 @@ function useCameraAndSensor(onOrient) {
 // ================================================================
 function DistPanel({ bodyH, setBodyH, eyeH, setEyeH, dist, setDist, distMode, setDistMode, stride, setStride, walkCount, setWalkCount, showEyeH }) {
   const [msg, setMsg] = useState(false);
-  const onBodyH = v => { setBodyH(v); setStride(null); const h = parseFloat(v); if (h > 0) saveProfile({ ...loadProfile(), bodyH: v, stride: +(h*0.45/100).toFixed(3) }); };
-  const autoFill = () => { const h = parseFloat(bodyH); if (!h) return; const e = +(h*0.93/100).toFixed(2)+""; const s = +(h*0.45/100).toFixed(3); setEyeH(e); setStride(s); saveProfile({ ...loadProfile(), bodyH, eyeH: e, stride: s }); setMsg(true); setTimeout(() => setMsg(false), 2000); };
-  const cs = () => { const h = parseFloat(bodyH); if (!h) return; const s = +(h*0.45/100).toFixed(3); setStride(s); if (walkCount) setDist(+(parseFloat(walkCount)*s).toFixed(1)+""); };
+  const onBodyH = v => { setBodyH(v); setStride(null); const h = parseFloat(v); if (h > 0) saveProfile({ ...loadProfile(), bodyH: v, stride: +(h*0.37/100).toFixed(3) }); };
+  const autoFill = () => { const h = parseFloat(bodyH); if (!h) return; const e = +(h*0.93/100).toFixed(2)+""; const s = +(h*0.37/100).toFixed(3); setEyeH(e); setStride(s); saveProfile({ ...loadProfile(), bodyH, eyeH: e, stride: s }); setMsg(true); setTimeout(() => setMsg(false), 2000); };
+  const cs = () => { const h = parseFloat(bodyH); if (!h) return; const s = +(h*0.37/100).toFixed(3); setStride(s); if (walkCount) setDist(+(parseFloat(walkCount)*s).toFixed(1)+""); };
   const hw = v => { setWalkCount(v); if (stride && v) setDist(+(parseFloat(v)*stride).toFixed(1)+""); };
   return (
     <>
@@ -115,7 +115,7 @@ function DistPanel({ bodyH, setBodyH, eyeH, setEyeH, dist, setDist, distMode, se
           <span style={{ color: GRN, minWidth: 24 }}>cm</span>
         </div>
         {bodyH && <div style={{ background: "rgba(126,203,161,0.08)", borderRadius: 8, padding: "7px 12px", marginBottom: 10, fontSize: 11, color: GRN }}>
-          推定歩幅：{Math.round(parseFloat(bodyH)*0.45)} cm　目の高さ：{(parseFloat(bodyH)*0.93/100).toFixed(2)} m
+          推定歩幅：{Math.round(parseFloat(bodyH)*0.37)} cm（測定時の慎重歩き）　目の高さ：{(parseFloat(bodyH)*0.93/100).toFixed(2)} m
         </div>}
         {showEyeH && <>
           <span style={LBL}>目の高さ（m）：</span>
@@ -138,7 +138,10 @@ function DistPanel({ bodyH, setBodyH, eyeH, setEyeH, dist, setDist, distMode, se
         {distMode === 0 && <div style={{ display: "flex", gap: 8, alignItems: "center" }}><input style={INP} type="number" value={dist} onChange={e => setDist(e.target.value)} placeholder="例: 15" /><span style={{ color: GRN, minWidth: 24 }}>m</span></div>}
         {distMode === 1 && <>
           {!stride ? <button style={{ ...PRI, padding: "10px", fontSize: 12 }} onClick={cs} disabled={!bodyH}>👣 身長から歩幅を計算</button>
-                   : <div style={{ background: "rgba(126,203,161,0.1)", borderRadius: 8, padding: "7px 12px", marginBottom: 10, fontSize: 12, color: GRN }}>歩幅：{(stride*100).toFixed(0)} cm（保存済み）</div>}
+                   : <div style={{ background: "rgba(126,203,161,0.1)", borderRadius: 8, padding: "7px 12px", marginBottom: 10, fontSize: 12, color: GRN }}>
+                       歩幅：{(stride*100).toFixed(0)} cm
+                       <span style={{ fontSize:10, color:"#4a9070", marginLeft:8 }}>※ 実測と違う場合は身長を再入力してください</span>
+                     </div>}
           {!bodyH && <p style={{ fontSize: 11, color: "#4a7c5a" }}>※ 先に身長を入力してください</p>}
           <span style={LBL}>歩数：</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}><input style={INP} type="number" value={walkCount} onChange={e => hw(e.target.value)} placeholder="例: 20" /><span style={{ color: GRN, minWidth: 24 }}>歩</span></div>
@@ -166,12 +169,33 @@ function CameraView({ videoRef, cameraOn, sensorOn, shown, lock1, lock2, label1,
           <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 2, background: GRN, opacity: 0.85, transform: "translateX(-50%)" }} />
           <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 8, height: 8, borderRadius: "50%", background: GRN }} />
         </div>
-        {lock1 != null && (() => { const px = Math.round((shown - lock1)*3); return isVertical
-          ? <div style={{ position: "absolute", top: `calc(50% + ${px}px)`, left: 0, right: 0, height: 2, background: color1, opacity: 0.8, transform: "translateY(-50%)" }}><span style={{ position: "absolute", right: 8, top: -20, fontSize: 10, color: color1, background: "rgba(0,0,0,0.6)", padding: "2px 6px", borderRadius: 4 }}>{label1} {lock1 > 0 ? "+" : ""}{lock1}°</span></div>
-          : <div style={{ position: "absolute", left: `calc(50% + ${px}px)`, top: 0, bottom: 0, width: 2, background: color1, opacity: 0.8, transform: "translateX(-50%)" }}><span style={{ position: "absolute", top: 10, left: 6, fontSize: 10, color: color1, background: "rgba(0,0,0,0.6)", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>{label1} {lock1}°</span></div>; })()}
-        {lock2 != null && (() => { const px = Math.round((shown - lock2)*3); return isVertical
-          ? <div style={{ position: "absolute", top: `calc(50% + ${px}px)`, left: 0, right: 0, height: 2, background: color2, opacity: 0.8, transform: "translateY(-50%)" }}><span style={{ position: "absolute", right: 8, top: -20, fontSize: 10, color: color2, background: "rgba(0,0,0,0.6)", padding: "2px 6px", borderRadius: 4 }}>{label2} {lock2 > 0 ? "+" : ""}{lock2}°</span></div>
-          : <div style={{ position: "absolute", left: `calc(50% + ${px}px)`, top: 0, bottom: 0, width: 2, background: color2, opacity: 0.8, transform: "translateX(-50%)" }}><span style={{ position: "absolute", top: 28, left: 6, fontSize: 10, color: color2, background: "rgba(0,0,0,0.6)", padding: "2px 6px", borderRadius: 4, whiteSpace: "nowrap" }}>{label2} {lock2}°</span></div>; })()}
+        {/* ロックしたライン：2本の角度差を画面上の相対位置で表示 */}
+        {(() => {
+          // 1本だけロック済み → 中央に固定
+          // 2本ともロック済み → 角度差をピクセル変換して相対位置で表示
+          const PPD = 4; // 1度あたりのピクセル数
+          if (lock1 != null && lock2 == null) {
+            // lock1のみ：中央
+            return isVertical
+              ? <div style={{ position:"absolute", top:"50%", left:0, right:0, height:2, background:color1, opacity:0.85, transform:"translateY(-50%)", boxShadow:`0 0 6px ${color1}` }}><span style={{ position:"absolute", right:8, top:-22, fontSize:10, color:color1, background:"rgba(0,0,0,0.7)", padding:"2px 8px", borderRadius:4, fontWeight:"bold" }}>✅ {label1} {lock1>0?"+":""}{lock1}°</span></div>
+              : <div style={{ position:"absolute", left:"50%", top:0, bottom:0, width:2, background:color1, opacity:0.85, transform:"translateX(-50%)", boxShadow:`0 0 6px ${color1}` }}><span style={{ position:"absolute", top:10, left:6, fontSize:10, color:color1, background:"rgba(0,0,0,0.7)", padding:"2px 8px", borderRadius:4, whiteSpace:"nowrap", fontWeight:"bold" }}>✅ {label1} {lock1}°</span></div>;
+          }
+          if (lock1 != null && lock2 != null) {
+            // 2本とも：角度差を相対位置で表示、中間点を中央に
+            const mid = (lock1 + lock2) / 2;
+            const off1 = Math.round((lock1 - mid) * PPD);
+            const off2 = Math.round((lock2 - mid) * PPD);
+            return <>
+              {isVertical
+                ? <div style={{ position:"absolute", top:`calc(50% + ${off1}px)`, left:0, right:0, height:2, background:color1, opacity:0.85, transform:"translateY(-50%)", boxShadow:`0 0 6px ${color1}` }}><span style={{ position:"absolute", right:8, top:-22, fontSize:10, color:color1, background:"rgba(0,0,0,0.7)", padding:"2px 8px", borderRadius:4, fontWeight:"bold" }}>✅ {label1} {lock1>0?"+":""}{lock1}°</span></div>
+                : <div style={{ position:"absolute", left:`calc(50% + ${off1}px)`, top:0, bottom:0, width:2, background:color1, opacity:0.85, transform:"translateX(-50%)", boxShadow:`0 0 6px ${color1}` }}><span style={{ position:"absolute", top:10, left:6, fontSize:10, color:color1, background:"rgba(0,0,0,0.7)", padding:"2px 8px", borderRadius:4, whiteSpace:"nowrap", fontWeight:"bold" }}>✅ {label1} {lock1}°</span></div>}
+              {isVertical
+                ? <div style={{ position:"absolute", top:`calc(50% + ${off2}px)`, left:0, right:0, height:2, background:color2, opacity:0.85, transform:"translateY(-50%)", boxShadow:`0 0 6px ${color2}` }}><span style={{ position:"absolute", right:8, top:-22, fontSize:10, color:color2, background:"rgba(0,0,0,0.7)", padding:"2px 8px", borderRadius:4, fontWeight:"bold" }}>✅ {label2} {lock2>0?"+":""}{lock2}°</span></div>
+                : <div style={{ position:"absolute", left:`calc(50% + ${off2}px)`, top:0, bottom:0, width:2, background:color2, opacity:0.85, transform:"translateX(-50%)", boxShadow:`0 0 6px ${color2}` }}><span style={{ position:"absolute", top:28, left:6, fontSize:10, color:color2, background:"rgba(0,0,0,0.7)", padding:"2px 8px", borderRadius:4, whiteSpace:"nowrap", fontWeight:"bold" }}>✅ {label2} {lock2}°</span></div>}
+            </>;
+          }
+          return null;
+        })()}
         <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(0,0,0,0.65)", borderRadius: 8, padding: "6px 12px", textAlign: "center" }}>
           <p style={{ fontSize: 9, color: GRN, margin: 0 }}>現在の角度</p>
           <p style={{ fontSize: 26, fontWeight: "bold", color: shown >= 0 ? GRN : BLUE, margin: 0, lineHeight: 1 }}>{shown > 0 ? "+" : ""}{shown.toFixed(1)}°</p>
