@@ -38,8 +38,76 @@ function loadProfile() {
   } catch { return {}; }
 }
 function saveProfile(o) { try { localStorage.setItem("fs_profile", JSON.stringify(o)); } catch {} }
-function loadTrees() { try { return JSON.parse(localStorage.getItem("fs_trees") || "[]"); } catch { return []; } }
-function saveTrees(t) { try { localStorage.setItem("fs_trees", JSON.stringify(t)); } catch {} }
+// ================================================================
+// IndexedDB ストレージ
+// ================================================================
+const DB_NAME = "ookina_ki_db", DB_VER = 1, STORE = "trees";
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE, { keyPath: "id" });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function loadTreesDB() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const req = tx.objectStore(STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  } catch { return []; }
+}
+
+async function saveTreesDB(trees) {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      const store = tx.objectStore(STORE);
+      // 全削除してから全追加
+      const clearReq = store.clear();
+      clearReq.onsuccess = () => {
+        let done = 0;
+        if (trees.length === 0) { resolve(); return; }
+        trees.forEach(t => {
+          const r = store.put(t);
+          r.onsuccess = () => { done++; if (done === trees.length) resolve(); };
+          r.onerror = () => { done++; if (done === trees.length) resolve(); };
+        });
+      };
+      clearReq.onerror = () => resolve();
+    });
+  } catch(e) { console.warn("IndexedDB save error:", e); }
+}
+
+// 後方互換：localStorageからの移行
+async function migrateFromLocalStorage() {
+  try {
+    const old = localStorage.getItem("fs_trees");
+    if (!old) return;
+    const trees = JSON.parse(old);
+    if (trees.length > 0) {
+      await saveTreesDB(trees);
+      localStorage.removeItem("fs_trees");
+      console.log(`✅ ${trees.length}本のデータをIndexedDBに移行しました`);
+    }
+  } catch(e) { console.warn("移行エラー:", e); }
+}
+
+// 後方互換用（同期呼び出し箇所のため空配列を返す）
+function loadTrees() { return []; }
+function saveTrees(t) { saveTreesDB(t); }
 
 
 // GPS取得
@@ -935,14 +1003,27 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
 
   const openNew = () => { setEditing(null); setPhoto(null); setName(""); setSpecies(""); setLocation(""); setNote(""); setHeight(""); setSpread(""); setTrunk(""); setAge(""); setAgeAuto(false); setGps(null); setView("form"); };
   const openEdit = (t) => { setEditing(t); setPhoto(t.photo); setName(t.name); setSpecies(t.species||""); setLocation(t.location||""); setNote(t.note||""); setHeight(t.measurements?.height||""); setSpread(t.measurements?.spread||""); setTrunk(t.measurements?.trunk||""); setAge(t.measurements?.age||""); setAgeAuto(false); setGps(t.gps||null); setView("form"); };
-  const doSave = () => {
+  const doSave = async () => {
     if (!name.trim()) { alert("木の名前を入力してください"); return; }
     const t = { id: editing?.id||newId(), name:name.trim(), species, location, note, photo, gps, measurements:{height,spread,trunk,age}, createdAt:editing?.createdAt||today(), updatedAt:today() };
     onUpdate(editing ? trees.map(x => x.id===t.id?t:x) : [t,...trees]);
     setSelected(t); setView("detail");
+    // 写真があり測定値がある場合、オーバーレイ画像を自動保存
+    const hasMeas = height || spread || trunk || age;
+    if (photo && hasMeas) {
+      try { await saveTreeImage(t); } catch(e) { console.warn("自動保存スキップ:", e); }
+    }
   };
   const doDelete = (id) => { if (!window.confirm("削除しますか？")) return; onUpdate(trees.filter(t=>t.id!==id)); setSelected(null); setView("list"); };
-  const onPhoto = e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev=>setPhoto(ev.target.result); r.readAsDataURL(f); };
+  const onPhoto = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      const resized = await resizePhoto(ev.target.result, 800);
+      setPhoto(resized);
+    };
+    reader.readAsDataURL(f);
+  };
   const filtered = trees.filter(t => !search||t.name.includes(search)||t.species?.includes(search)||t.location?.includes(search));
   const cur = selected && trees.find(t=>t.id===selected.id);
 
@@ -982,6 +1063,9 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
           </div>}
         </>}
 
+        {/* 登録ボタン（上部） */}
+        <button style={{ ...PRI, marginBottom:14 }} onClick={openNew}>＋　新しい木を登録する</button>
+
         {trees.length>0&&<div style={{ position:"relative", marginBottom:12 }}>
           <input style={{ ...INP, paddingLeft:36, fontSize:14 }} type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="名前・樹種・場所で検索..." />
           <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", fontSize:16, color:"#5a8c6a" }}>🔍</span>
@@ -1010,7 +1094,6 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
           </button>
         )) : <div style={{ textAlign:"center", padding:"40px 20px" }}><p style={{ fontSize:36, marginBottom:12 }}>🌱</p><p style={{ fontSize:13, color:"#5a8c6a" }}>{search?"該当なし":"まだ登録されていません"}</p></div>}
 
-        <button style={{ ...PRI, marginTop:8 }} onClick={openNew}>＋　新しい木を登録する</button>
         {showPdf && <PdfModal trees={trees} onClose={() => setShowPdf(false)} />}
       </>}
 
@@ -1135,11 +1218,12 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
         </div>
         {/* 詳細画面の写真エリア */}
         <input ref={detailPhotoRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }}
-          onChange={e => {
+          onChange={async e => {
             const f = e.target.files[0]; if (!f) return;
             const r = new FileReader();
-            r.onload = ev => {
-              const updated = { ...cur, photo: ev.target.result, updatedAt: today() };
+            r.onload = async ev => {
+              const resized = await resizePhoto(ev.target.result, 800);
+              const updated = { ...cur, photo: resized, updatedAt: today() };
               onUpdate(trees.map(t => t.id === cur.id ? updated : t));
               setSelected(updated);
             };
@@ -1205,6 +1289,27 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
 // ================================================================
 // 画像保存（Canvas合成）
 // ================================================================
+
+// ================================================================
+// 写真リサイズ（localStorage保存用・最大幅800px）
+// ================================================================
+function resizePhoto(dataUrl, maxW = 800) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 async function saveTreeImage(tree) {
   const m = tree.measurements || {};
 
@@ -1488,13 +1593,25 @@ function MapApp({ trees, onSelectTree, onBack }) {
 // ================================================================
 export default function App() {
   const [mode, setMode] = useState(null);
-  const [trees, setTrees] = useState(loadTrees);
+  const [trees, setTrees] = useState([]);
+  const [dbReady, setDbReady] = useState(false);
   const [pendingTreeId, setPendingTreeId] = useState(null);
   const [pendingTreeName, setPendingTreeName] = useState(null);
   const [mapSelectedId, setMapSelectedId] = useState(null);
   const prof = loadProfile();
 
-  const updateTrees = (next) => { setTrees(next); saveTrees(next); };
+  // IndexedDB から読み込み（起動時）
+  useEffect(() => {
+    (async () => {
+      await migrateFromLocalStorage();
+      const loaded = await loadTreesDB();
+      loaded.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      setTrees(loaded);
+      setDbReady(true);
+    })();
+  }, []);
+
+  const updateTrees = (next) => { setTrees(next); saveTreesDB(next); };
 
   const onSaveTree = (newTree, existingId, measurement) => {
     let next;
@@ -1511,9 +1628,9 @@ export default function App() {
   const onSelectTree = (id) => { setMapSelectedId(id); setMode("carte"); };
 
   // アルバム編集画面から測定へ
-  const onMeasureHeight = (treeId) => { setPendingTreeId(treeId); setMode("height"); };
-  const onMeasureSpread = (treeId) => { setPendingTreeId(treeId); setMode("spread"); };
-  const onMeasureTrunk  = (treeId) => { setPendingTreeId(treeId); setMode("trunk"); };
+  const onMeasureHeight = (treeId) => { setPendingTreeId(treeId); setPendingTreeName(trees.find(t=>t.id===treeId)?.name||null); setMode("height"); };
+  const onMeasureSpread = (treeId) => { setPendingTreeId(treeId); setPendingTreeName(trees.find(t=>t.id===treeId)?.name||null); setMode("spread"); };
+  const onMeasureTrunk  = (treeId) => { setPendingTreeId(treeId); setPendingTreeName(trees.find(t=>t.id===treeId)?.name||null); setMode("trunk"); };
 
   const menuBtn = (emoji, title, sub, badge, onClick) => (
     <button onClick={onClick} style={{ width:"100%", padding:"18px 16px", background:"rgba(255,255,255,0.92)", border:"1.5px solid rgba(45,106,79,0.15)", borderRadius:16, cursor:"pointer", marginBottom:10, display:"flex", alignItems:"center", gap:14, fontFamily:"inherit", textAlign:"left", boxShadow:"0 3px 12px rgba(45,106,79,0.1)" }}>
@@ -1540,11 +1657,13 @@ export default function App() {
           {trees.length>0&&<div style={{ background:"rgba(255,255,255,0.9)", border:"1px solid rgba(45,106,79,0.2)", borderRadius:10, padding:"10px 14px", marginBottom:16, boxShadow:"0 2px 8px rgba(45,106,79,0.08)" }}>
             <p style={{ fontSize:12, color:"#2d6a4f", margin:0, fontWeight:"bold" }}>📋 アルバム登録：{trees.length}本　測定済み：{trees.filter(t=>t.measurements?.height).length}本</p>
           </div>}
+          {dbReady && <>
           {menuBtn("📋","大きな木のアルバム","写真・測定値を記録・管理・PDF出力",trees.length>0?`${trees.length}本`:null,()=>setMode("carte"))}
           {menuBtn("🗺️","大きな木の地図","記録した木の場所を地図で確認",trees.filter(t=>t.gps).length>0?`${trees.filter(t=>t.gps).length}本`:null,()=>setMode("map"))}
           {menuBtn("📐","樹高を測定する","カメラで根元・梢を2点ロック",null,()=>{ setPendingTreeId(null); setMode("height"); })}
           {menuBtn("🌿","枝張りを測定する","カメラで左端・右端を2点ロック",null,()=>{ setPendingTreeId(null); setMode("spread"); })}
           {menuBtn("🌲","幹周りを測定する","カメラで幹の左右を2点ロック",null,()=>{ setPendingTreeId(null); setMode("trunk"); })}
+          </>}
         </div>}
 
         {mode==="height"&&<HeightApp prof={prof} trees={trees} pendingTreeId={pendingTreeId} pendingTreeName={pendingTreeName} onSaveTree={(nt,eid,meas) => { if (pendingTreeId) { updateTrees(trees.map(t => t.id===pendingTreeId ? { ...t, measurements:{ ...t.measurements, ...meas }, updatedAt:today() } : t)); setPendingTreeId(null); setPendingTreeName(null); setMode("carte"); } else { onSaveTree(nt,eid,meas); } }} onBack={()=>setMode(null)}/>}
