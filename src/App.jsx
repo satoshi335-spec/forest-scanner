@@ -200,8 +200,14 @@ function CameraView({ videoRef, cameraOn, sensorOn, shown, lock1, lock2, label1,
           if (lock1 != null && lock2 != null) {
             // 2本とも：角度差を相対位置で表示、中間点を中央に
             const mid = (lock1 + lock2) / 2;
-            const off1 = Math.round((lock1 - mid) * PPD);
-            const off2 = Math.round((lock2 - mid) * PPD);
+            let off1 = Math.round((lock1 - mid) * PPD);
+            let off2 = Math.round((lock2 - mid) * PPD);
+            // 最低でも40px離す（角度差が小さくてもラインが見える）
+            if (Math.abs(off1 - off2) < 40) {
+              const sign = off1 <= off2 ? -1 : 1;
+              off1 = sign * 20;
+              off2 = -sign * 20;
+            }
             return <>
               {isVertical
                 ? <div style={{ position:"absolute", top:`calc(50% + ${off1}px)`, left:0, right:0, height:2, background:color1, opacity:0.85, transform:"translateY(-50%)", boxShadow:`0 0 6px ${color1}` }}><span style={{ position:"absolute", right:8, top:-22, fontSize:10, color:color1, background:"rgba(0,0,0,0.7)", padding:"2px 8px", borderRadius:4, fontWeight:"bold" }}>✅ {label1} {lock1>0?"+":""}{lock1}°</span></div>
@@ -523,19 +529,19 @@ function SpreadApp({ prof, trees, onSaveTree, onBack }) {
   const [pg, setPg] = useState(0);
   const [dist, setDist] = useState(""); const [bodyH, setBodyH] = useState(prof.bodyH||"");
   const [walkCount, setWalkCount] = useState(""); const [stride, setStride] = useState(prof.stride||null);
-  const [distMode, setDistMode] = useState(1); const [liveAlpha, setLiveAlpha] = useState(null);
+  const [distMode, setDistMode] = useState(1); const [liveGamma, setLiveGamma] = useState(null);
   const [left, setLeft] = useState(null); const [right, setRight] = useState(null);
   const [result, setResult] = useState(null); const [showSave, setShowSave] = useState(false);
-  const alphaRef = useRef(null);
-  const onOrient = useCallback(e => { if (e.alpha==null) return; let v = +e.alpha.toFixed(1); alphaRef.current=v; setLiveAlpha(v); }, []);
+  const gammaRef = useRef(null);
+  const onOrient = useCallback(e => { if (e.gamma==null) return; let v = +e.gamma.toFixed(1); v = Math.max(-89,Math.min(89,v)); gammaRef.current=v; setLiveGamma(v); }, []);
   const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(onOrient);
-  const shown = liveAlpha??0; const canCalc = left!==null&&right!==null&&!!dist;
+  const shown = liveGamma??0; const canCalc = left!==null&&right!==null&&!!dist;
   const doCalc = () => {
     if (!canCalc) return; stopCamera();
-    const diff = alphaDiff(left, right);
-    const halfRad = (diff / 2) * Math.PI / 180;
-    const diam = +(parseFloat(dist) * 2 * Math.tan(halfRad)).toFixed(2);
-    const s = +(diam).toFixed(1);
+    // 縦持ち左右回転：左右の角度をそれぞれtan変換して合計
+    const lRad = Math.abs(left) * Math.PI / 180;
+    const rRad = Math.abs(right) * Math.PI / 180;
+    const s = +(parseFloat(dist) * (Math.tan(lRad) + Math.tan(rRad))).toFixed(1);
     setResult({ spread:s, radius:+(s/2).toFixed(1), area:+(Math.PI*(s/2)*(s/2)).toFixed(1), d:parseFloat(dist), leftDeg:left, rightDeg:right });
     setPg(3);
   };
@@ -574,10 +580,10 @@ function SpreadApp({ prof, trees, onSaveTree, onBack }) {
       {pg===2&&<div>
         <CameraView videoRef={videoRef} cameraOn={cameraOn} sensorOn={sensorOn} shown={shown} lock1={left} lock2={right} label1="左端" label2="右端" color1={BLUE} color2={GOLD} isVertical={false} />
         <LockButtons sensorOn={sensorOn} startAll={startAll} lock1={left} lock2={right}
-          onLock1={() => { if (alphaRef.current!=null) setLeft(+alphaRef.current.toFixed(1)); }}
-          onLock2={() => { if (alphaRef.current!=null) setRight(+alphaRef.current.toFixed(1)); }}
+          onLock1={() => { if (gammaRef.current!=null) setLeft(+gammaRef.current.toFixed(1)); }}
+          onLock2={() => { if (gammaRef.current!=null) setRight(+gammaRef.current.toFixed(1)); }}
           onRedo1={() => { setLeft(null); setRight(null); }} onRedo2={() => setRight(null)}
-          label1="左端" label2="右端" color1={BLUE} color2={GOLD} hint1="スマホを水平に左に向けて" hint2="スマホを水平に右に向けて" />
+          label1="左端" label2="右端" color1={BLUE} color2={GOLD} hint1="体ごと左に向いて左端に照準" hint2="体ごと右に向いて右端に照準" />
         <button onClick={doCalc} style={{ ...PRI, background:canCalc?"#2a4a1a":"#1a2a1a", borderColor:canCalc?GOLD:"#4a7c5a", color:canCalc?GOLD:"#4a7c5a", cursor:canCalc?"pointer":"not-allowed" }}>
           🌿　枝張りを計算する {!canCalc&&(left===null?"（左端をロック）":right===null?"（右端をロック）":"（距離を入力）")}
         </button>
@@ -623,18 +629,18 @@ function TrunkApp({ prof, trees, onSaveTree, onBack }) {
   const [pg, setPg] = useState(0);
   const [dist, setDist] = useState(""); const [bodyH, setBodyH] = useState(prof.bodyH||"");
   const [walkCount, setWalkCount] = useState(""); const [stride, setStride] = useState(prof.stride||null);
-  const [distMode, setDistMode] = useState(1); const [liveAlpha, setLiveAlpha] = useState(null);
+  const [distMode, setDistMode] = useState(1); const [liveGamma, setLiveGamma] = useState(null);
   const [left, setLeft] = useState(null); const [right, setRight] = useState(null);
   const [result, setResult] = useState(null); const [showSave, setShowSave] = useState(false);
-  const alphaRef = useRef(null);
-  const onOrient = useCallback(e => { if (e.alpha==null) return; let v = +e.alpha.toFixed(1); alphaRef.current=v; setLiveAlpha(v); }, []);
+  const gammaRef = useRef(null);
+  const onOrient = useCallback(e => { if (e.gamma==null) return; let v = +e.gamma.toFixed(1); v = Math.max(-89,Math.min(89,v)); gammaRef.current=v; setLiveGamma(v); }, []);
   const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(onOrient);
-  const shown = liveAlpha??0; const canCalc = left!==null&&right!==null&&!!dist;
+  const shown = liveGamma??0; const canCalc = left!==null&&right!==null&&!!dist;
   const doCalc = () => {
     if (!canCalc) return; stopCamera();
-    const diff = alphaDiff(left, right);
-    const halfRad = (diff / 2) * Math.PI / 180;
-    const diamM = +(parseFloat(dist) * 2 * Math.tan(halfRad)).toFixed(3);
+    const lRad = Math.abs(left) * Math.PI / 180;
+    const rRad = Math.abs(right) * Math.PI / 180;
+    const diamM = +(parseFloat(dist) * (Math.tan(lRad) + Math.tan(rRad))).toFixed(3);
     const diamCm = +(diamM * 100).toFixed(1);
     const circCm = +(diamCm * Math.PI).toFixed(1);
     setResult({ diam: diamCm, circ: circCm, d:parseFloat(dist), leftDeg:left, rightDeg:right });
@@ -673,13 +679,13 @@ function TrunkApp({ prof, trees, onSaveTree, onBack }) {
             <text x="140" y="26" fill="#a8d5b5" fontSize="9" textAnchor="middle">直径</text>
           </svg>
           <p style={{ fontSize:11, color:"#5a8c6a", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>
-            スマホを水平に持ち幹の左端・右端に向けてロック<br/>
-            方位角の差から直径 → 幹周り（×π）を計算
+            スマホを縦に持ったまま体ごと左右に向いてロック<br/>
+            左右の角度から直径 → 幹周り（×π）を計算
           </p>
         </div>
         <div style={{ background:"rgba(255,209,102,0.08)", border:"1px solid rgba(255,209,102,0.2)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
           <p style={{ fontSize:12, color:GOLD, margin:0, lineHeight:1.7 }}>
-            💡 木から <strong>2〜5m</strong> 離れ、スマホを<strong>水平</strong>に持って左端→右端の順に向けてロックしてください。
+            💡 木から <strong>2〜5m</strong> 離れ、スマホを<strong>縦に持ったまま体ごと</strong>左端→右端の順に向けてロックしてください。
           </p>
         </div>
         <button style={PRI} onClick={() => setPg(1)}>🌲　測定を開始する</button>
@@ -696,10 +702,10 @@ function TrunkApp({ prof, trees, onSaveTree, onBack }) {
       {pg===2&&<div>
         <CameraView videoRef={videoRef} cameraOn={cameraOn} sensorOn={sensorOn} shown={shown} lock1={left} lock2={right} label1="幹左" label2="幹右" color1={BLUE} color2={GOLD} isVertical={false} />
         <LockButtons sensorOn={sensorOn} startAll={startAll} lock1={left} lock2={right}
-          onLock1={() => { if (alphaRef.current!=null) setLeft(+alphaRef.current.toFixed(1)); }}
-          onLock2={() => { if (alphaRef.current!=null) setRight(+alphaRef.current.toFixed(1)); }}
+          onLock1={() => { if (gammaRef.current!=null) setLeft(+gammaRef.current.toFixed(1)); }}
+          onLock2={() => { if (gammaRef.current!=null) setRight(+gammaRef.current.toFixed(1)); }}
           onRedo1={() => { setLeft(null); setRight(null); }} onRedo2={() => setRight(null)}
-          label1="幹左端" label2="幹右端" color1={BLUE} color2={GOLD} hint1="スマホを水平に左端に向けて" hint2="スマホを水平に右端に向けて" />
+          label1="幹左端" label2="幹右端" color1={BLUE} color2={GOLD} hint1="体ごと左に向いて幹左端に照準" hint2="体ごと右に向いて幹右端に照準" />
         <button onClick={doCalc} style={{ ...PRI, background:canCalc?"#2a4a1a":"#1a2a1a", borderColor:canCalc?GOLD:"#4a7c5a", color:canCalc?GOLD:"#4a7c5a", cursor:canCalc?"pointer":"not-allowed" }}>
           🌲　幹周りを計算する {!canCalc&&(left===null?"（左端をロック）":right===null?"（右端をロック）":"（距離を入力）")}
         </button>
