@@ -650,7 +650,7 @@ function TrunkTapView({ videoRef, cameraOn, startAll, sensorOn, left, right, onL
   return (
     <div>
       <div ref={containerRef}
-        style={{ position:"relative", borderRadius:16, overflow:"hidden", marginBottom:12, background:"#000", aspectRatio:"4/3", cursor: cameraOn ? "crosshair" : "default" }}
+        style={{ position:"relative", borderRadius:16, overflow:"hidden", marginBottom:12, background:"#000", aspectRatio:"3/4", cursor: cameraOn ? "crosshair" : "default" }}
         onClick={handleTap} onTouchEnd={e => { e.preventDefault(); handleTap(e); }}>
         <video ref={videoRef} autoPlay playsInline muted style={{ width:"100%", height:"100%", objectFit:"cover", display:cameraOn?"block":"none" }} />
         {!cameraOn && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"#f0f7f0" }}>
@@ -665,11 +665,11 @@ function TrunkTapView({ videoRef, cameraOn, startAll, sensorOn, left, right, onL
             <div style={{ position:"absolute", left:"50%", top:0, bottom:0, width:2, background:"#2d6a4f", opacity:0.7, transform:"translateX(-50%)" }} />
           </div>
           {/* 左端ライン */}
-          {leftPx !== null && <div style={{ position:"absolute", left:leftPx, top:0, bottom:0, width:3, background:BLUE, opacity:0.9, transform:"translateX(-50%)", pointerEvents:"none", boxShadow:`0 0 8px ${BLUE}` }}>
+          {leftPx !== null && <div style={{ position:"absolute", left:leftPx, top:0, bottom:0, width:4, background:BLUE, opacity:0.95, transform:"translateX(-50%)", pointerEvents:"none", boxShadow:`0 0 12px ${BLUE}` }}>
             <span style={{ position:"absolute", top:8, left:6, fontSize:11, color:BLUE, background:"rgba(0,0,0,0.7)", padding:"2px 8px", borderRadius:4, whiteSpace:"nowrap", fontWeight:"bold" }}>✅ 左端</span>
           </div>}
           {/* 右端ライン */}
-          {rightPx !== null && <div style={{ position:"absolute", left:rightPx, top:0, bottom:0, width:3, background:GOLD, opacity:0.9, transform:"translateX(-50%)", pointerEvents:"none", boxShadow:`0 0 8px ${GOLD}` }}>
+          {rightPx !== null && <div style={{ position:"absolute", left:rightPx, top:0, bottom:0, width:4, background:GOLD, opacity:0.95, transform:"translateX(-50%)", pointerEvents:"none", boxShadow:`0 0 12px ${GOLD}` }}>
             <span style={{ position:"absolute", top:28, left:6, fontSize:11, color:GOLD, background:"rgba(0,0,0,0.7)", padding:"2px 8px", borderRadius:4, whiteSpace:"nowrap", fontWeight:"bold" }}>✅ 右端</span>
           </div>}
           {/* 2本ロック時：幅を示す帯 */}
