@@ -1613,16 +1613,19 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
             ))}
           </div>
 
-          {/* 写真サムネグリッド */}
-          {trees.filter(t=>t.photo).length>0&&<div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, marginBottom:14 }}>
-            {trees.filter(t=>t.photo).slice(0,8).map(t=>(
-              <button key={t.id} onClick={() => { setSelected(t); setView("detail"); }} style={{ padding:0, border:"2px solid rgba(126,203,161,0.2)", borderRadius:8, overflow:"hidden", cursor:"pointer", aspectRatio:"1", background:"#e8f5e9", position:"relative" }}>
-                <img src={t.photo} alt={t.name} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>
-                <div style={{ position:"absolute", bottom:0, left:0, right:0, background:"rgba(0,0,0,0.6)", padding:"3px 4px" }}>
-                  <p style={{ fontSize:9, color:"#1a3a2a", margin:0, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>{t.name}</p>
-                </div>
-              </button>
-            ))}
+          {/* 写真サムネ：横スクロール1列 */}
+          {trees.filter(t=>t.photo).length>0&&<div style={{ overflowX:"auto", marginBottom:14, WebkitOverflowScrolling:"touch", scrollbarWidth:"none", msOverflowStyle:"none" }}>
+            <div style={{ display:"flex", gap:8, paddingBottom:4, width:"max-content" }}>
+              {[...trees].sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||"")).filter(t=>t.photo).map(t=>(
+                <button key={t.id} onClick={() => { setSelected(t); setView("detail"); }}
+                  style={{ padding:0, border:"2px solid rgba(126,203,161,0.25)", borderRadius:12, overflow:"hidden", cursor:"pointer", width:100, height:100, background:"#e8f5e9", position:"relative", flexShrink:0 }}>
+                  <img src={t.photo} alt={t.name} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>
+                  <div style={{ position:"absolute", bottom:0, left:0, right:0, background:"rgba(0,0,0,0.55)", padding:"3px 5px" }}>
+                    <p style={{ fontSize:9, color:"#fff", margin:0, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>{t.name}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>}
         </>}
 
@@ -1634,7 +1637,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
           <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", fontSize:16, color:"#5a8c6a" }}>🔍</span>
         </div>}
 
-        {filtered.length>0 ? filtered.map(t=>(
+        {filtered.length>0 ? [...filtered].sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||"")).map(t=>(
           <button key={t.id} onClick={()=>{setSelected(t);setView("detail");}} style={{ width:"100%", background:"rgba(255,255,255,0.9)", border:"1px solid rgba(45,106,79,0.18)", borderRadius:14, padding:0, cursor:"pointer", marginBottom:10, textAlign:"left", overflow:"hidden", fontFamily:"inherit" }}>
             <div style={{ display:"flex" }}>
               <div style={{ width:90, minHeight:90, background:"#e8f5e9", flexShrink:0 }}>
