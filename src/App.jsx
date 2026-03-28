@@ -26,6 +26,8 @@ function calcTrunk(dist, leftDeg, rightDeg) {
 }
 function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function today() { const d = new Date(); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`; }
+function parseDate(s) { if (!s) return 0; const [y,m,d] = (s+"").split("/").map(Number); return new Date(y,m-1,d).getTime(); }
+function sortNewest(arr) { return [...arr].sort((a,b) => parseDate(b.createdAt) - parseDate(a.createdAt)); }
 function loadProfile() {
   try {
     const p = JSON.parse(localStorage.getItem("fs_profile") || "{}");
@@ -1616,7 +1618,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
           {/* 写真サムネ：横スクロール1列 */}
           {trees.filter(t=>t.photo).length>0&&<div style={{ overflowX:"auto", marginBottom:14, WebkitOverflowScrolling:"touch", scrollbarWidth:"none", msOverflowStyle:"none" }}>
             <div style={{ display:"flex", gap:8, paddingBottom:4, width:"max-content" }}>
-              {[...trees].sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||"")).filter(t=>t.photo).map(t=>(
+              {sortNewest(trees).filter(t=>t.photo).map(t=>(
                 <button key={t.id} onClick={() => { setSelected(t); setView("detail"); }}
                   style={{ padding:0, border:"2px solid rgba(126,203,161,0.25)", borderRadius:12, overflow:"hidden", cursor:"pointer", width:100, height:100, background:"#e8f5e9", position:"relative", flexShrink:0 }}>
                   <img src={t.photo} alt={t.name} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}/>
@@ -1637,7 +1639,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
           <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", fontSize:16, color:"#5a8c6a" }}>🔍</span>
         </div>}
 
-        {filtered.length>0 ? [...filtered].sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||"")).map(t=>(
+        {filtered.length>0 ? sortNewest(filtered).map(t=>(
           <button key={t.id} onClick={()=>{setSelected(t);setView("detail");}} style={{ width:"100%", background:"rgba(255,255,255,0.9)", border:"1px solid rgba(45,106,79,0.18)", borderRadius:14, padding:0, cursor:"pointer", marginBottom:10, textAlign:"left", overflow:"hidden", fontFamily:"inherit" }}>
             <div style={{ display:"flex" }}>
               <div style={{ width:90, minHeight:90, background:"#e8f5e9", flexShrink:0 }}>
@@ -2182,7 +2184,7 @@ export default function App() {
     (async () => {
       await migrateFromLocalStorage();
       const loaded = await loadTreesDB();
-      loaded.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      loaded.sort((a, b) => parseDate(b.createdAt) - parseDate(a.createdAt));
       setTrees(loaded);
       setDbReady(true);
     })();
