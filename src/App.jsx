@@ -620,7 +620,13 @@ function HeightApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
             <line x1="232" y1="18" x2="232" y2="125" stroke="#a8d5b5" strokeWidth="1" strokeDasharray="3,2"/>
             <text x="246" y="75" fill="#a8d5b5" fontSize="9">樹高</text>
           </svg>
-          <p style={{ fontSize:11, color:"#5a8c6a", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>① 根元をロック → ② 梢をロック</p>
+          <p style={{ fontSize:11, color:"#5a8c6a", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>① 梢（てっぺん）をロック → ② 根元（地面）をロック</p>
+          <div style={{ background:"rgba(255,209,102,0.1)", border:"1px solid rgba(255,209,102,0.25)", borderRadius:8, padding:"8px 12px", marginTop:10 }}>
+            <p style={{ fontSize:11, color:GOLD, margin:0, lineHeight:1.7 }}>
+              💡 上から下の順に測定します<br/>
+              梢に向けてロック後、カメラを下げて根元でロック
+            </p>
+          </div>
         </div>
         <button style={PRI} onClick={() => setPg(1)}>📐　測定を開始する</button>
         <button style={GHO} onClick={onBack}>← メニューに戻る</button>
@@ -631,14 +637,15 @@ function HeightApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
         <button style={GHO} onClick={() => setPg(0)}>← 戻る</button>
       </div>}
       {pg===2&&<div>
-        <CameraView videoRef={videoRef} cameraOn={cameraOn} sensorOn={sensorOn} shown={shown} lock1={bot} lock2={top} label1="根元" label2="梢" color1={BLUE} color2={GOLD} isVertical />
-        <LockButtons sensorOn={sensorOn} startAll={startAll} lock1={bot} lock2={top}
-          onLock1={() => { if (liveRef.current!=null) setBot(+liveRef.current.toFixed(1)); }}
-          onLock2={() => { if (liveRef.current!=null) setTop(+liveRef.current.toFixed(1)); }}
-          onRedo1={() => { setBot(null); setTop(null); }} onRedo2={() => setTop(null)}
-          label1="根元" label2="梢" color1={BLUE} color2={GOLD} hint1="カメラを根元に向けて" hint2="カメラを梢に向けて" />
+        {/* ① 梢 → ② 根元 の順に変更 */}
+        <CameraView videoRef={videoRef} cameraOn={cameraOn} sensorOn={sensorOn} shown={shown} lock1={top} lock2={bot} label1="梢" label2="根元" color1={GOLD} color2={BLUE} isVertical />
+        <LockButtons sensorOn={sensorOn} startAll={startAll} lock1={top} lock2={bot}
+          onLock1={() => { if (liveRef.current!=null) setTop(+liveRef.current.toFixed(1)); }}
+          onLock2={() => { if (liveRef.current!=null) setBot(+liveRef.current.toFixed(1)); }}
+          onRedo1={() => { setTop(null); setBot(null); }} onRedo2={() => setBot(null)}
+          label1="梢（上）" label2="根元（下）" color1={GOLD} color2={BLUE} hint1="カメラを梢（てっぺん）に向けて" hint2="カメラを根元（地面）に向けて" />
         <button onClick={doCalc} style={{ ...PRI, background:canCalc?"#2a4a1a":"#1a2a1a", borderColor:canCalc?GOLD:"#4a7c5a", color:canCalc?GOLD:"#4a7c5a", cursor:canCalc?"pointer":"not-allowed" }}>
-          📐　樹高を計算する {!canCalc&&(bot===null?"（根元をロック）":top===null?"（梢をロック）":"（距離を入力）")}
+          📐　樹高を計算する {!canCalc&&(top===null?"（梢をロック）":bot===null?"（根元をロック）":"（距離を入力）")}
         </button>
         <button style={GHO} onClick={() => { setPg(1); stopCamera(); }}>← 距離の入力に戻る</button>
       </div>}
@@ -658,7 +665,7 @@ function HeightApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
           </div>
         </div>
         <div style={{ ...CARD, padding:"14px 16px" }}>
-          {[["水平距離",`${result.d} m`],["根元",`${result.botDeg>0?"+":""}${result.botDeg}°`],["梢",`+${result.topDeg}°`],["角度差",`${(result.topDeg-result.botDeg).toFixed(1)}°`],["目の高さ",`${result.e} m`]].map(([l,v],i,a)=>(
+          {[["水平距離",`${result.d} m`],["梢",`${result.topDeg>0?"+":""}${result.topDeg}°`],["根元",`${result.botDeg>0?"+":""}${result.botDeg}°`],["角度差",`${(result.topDeg-result.botDeg).toFixed(1)}°`],["目の高さ",`${result.e} m`]].map(([l,v],i,a)=>(
             <div key={l} style={{ display:"flex", justifyContent:"space-between", paddingBottom:i<a.length-1?7:0, marginBottom:i<a.length-1?7:0, borderBottom:i<a.length-1?"1px solid rgba(126,203,161,0.1)":"none" }}>
               <span style={{ fontSize:11, color:"#5a9070" }}>{l}</span><span style={{ fontSize:13, color:"#1a3a2a" }}>{v}</span>
             </div>
