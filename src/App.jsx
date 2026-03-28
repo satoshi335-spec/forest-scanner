@@ -2012,53 +2012,40 @@ async function saveTreeImage(tree) {
   });
   ctx.shadowBlur = 0;
 
-  // ── 木の名前（1文字ずつランダムサイズ・明朝体） ──
-  ctx.shadowColor = "rgba(0,0,0,0.85)";
-  ctx.shadowBlur = 14;
-  ctx.textAlign = "left";
-  ctx.fillStyle = "rgba(255,255,255,0.88)";
-
+  // ── 木の名前（右下・縦並び・控えめ・バラバラサイズ） ──
   const FONT = "'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif";
-  const chars = Array.from(tree.name); // 絵文字・漢字対応
-  const BASE = 58; // 基準フォントサイズ
-  const VARIANCE = 22; // ±バラつき幅
+  const chars = Array.from(tree.name);
+  const BASE = 32;
+  const VARIANCE = 14;
 
-  // シード値（木の名前から決定的にランダム）→ 毎回同じバラつきになる
+  // シード値（木の名前から決定的なランダム）
   const seed = chars.reduce((s, c) => s + c.charCodeAt(0), 0);
   const rng = (i) => {
     const x = Math.sin(seed * 9301 + i * 49297 + 233720) * 10000;
     return x - Math.floor(x);
   };
-
-  // 各文字のサイズを決める
   const sizes = chars.map((_, i) => Math.round(BASE - VARIANCE/2 + rng(i) * VARIANCE));
-  // ベースライン位置（大きい文字に合わせる）
-  const baselineOffset = sizes.map((s, i) => Math.round((Math.max(...sizes) - s) * 0.5));
 
-  // 全体幅を計算してセンタリング
-  let totalW = 0;
-  sizes.forEach((s, i) => {
+  // 右下に縦並び（「大きな木」の上）
+  ctx.shadowColor = "rgba(0,0,0,0.7)";
+  ctx.shadowBlur = 8;
+  ctx.textAlign = "right";
+  ctx.fillStyle = "rgba(255,255,255,0.72)";
+
+  // 下から積み上げる（「大きな木」の上 = H-48 から上へ）
+  let curY = H - 80; // 「大きな木」テキストの上
+  // 下から描くので配列を逆順に
+  [...chars].reverse().forEach((ch, ri) => {
+    const i = chars.length - 1 - ri;
+    const s = sizes[i];
     ctx.font = `${s}px ${FONT}`;
-    totalW += ctx.measureText(chars[i]).width + (i < chars.length-1 ? 6 : 0);
-  });
-
-  // 幅が画面をはみ出す場合はスケールダウン
-  const scale = Math.min(1, (W - 120) / totalW);
-  const startX = (W - totalW * scale) / 2;
-  const baseY = H - 95;
-
-  let curX = startX;
-  chars.forEach((ch, i) => {
-    const s = Math.round(sizes[i] * scale);
-    ctx.font = `${s}px ${FONT}`;
-    const offY = Math.round(baselineOffset[i] * scale);
-    ctx.fillText(ch, curX, baseY + offY);
-    curX += ctx.measureText(ch).width + Math.round(6 * scale);
+    ctx.fillText(ch, W - 52, curY);
+    curY -= s + 4;
   });
 
   // 記録日・アプリ名（最下部）
-  ctx.shadowBlur = 8;
-  ctx.font = `24px ${FONT}`;
+  ctx.shadowBlur = 6;
+  ctx.font = `22px ${FONT}`;
   ctx.fillStyle = "rgba(255,255,255,0.38)";
   ctx.textAlign = "left";
   ctx.fillText(tree.updatedAt, 52, H - 48);
