@@ -459,15 +459,39 @@ function SaveModal({ measurement, trees, onSave, onSkip }) {
 // ================================================================
 // PDF 出力
 // ================================================================
-function printPDF(targets) {
-  // 2列×2行グリッド（4本ずつ1ページ）
-  const cards = targets.map(t => {
+async function printPDF(targets) {
+  // 写真をPDF用に400px幅にリサイズ（Safari タイムアウト防止）
+  const resizeForPDF = (dataUrl) => new Promise(resolve => {
+    if (!dataUrl) return resolve(null);
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 400;
+      const scale = Math.min(1, MAX / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL("image/jpeg", 0.72));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+
+  // 全写真を事前リサイズ
+  const resized = await Promise.all(targets.map(t => resizeForPDF(t.photo)));
+
+  // 縦長カード・2列グリッド（写真を3:4比率で縦長表示）
+  const cards = targets.map((t, idx) => {
     const m = t.measurements || {};
+    const photo = resized[idx];
     return `
       <div class="card">
-        ${t.photo
-          ? `<img src="${t.photo}" class="photo" />`
-          : `<div class="no-photo">🌳</div>`}
+        <div class="photo-wrap">
+          ${photo
+            ? `<img src="${photo}" class="photo" />`
+            : `<div class="no-photo">🌳</div>`}
+        </div>
         <div class="card-body">
           <h2>${t.name}</h2>
           <div class="tags">
@@ -498,22 +522,24 @@ function printPDF(targets) {
     /* 2列グリッド */
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .card { border: 1px solid #cde8d8; border-radius: 12px; overflow: hidden; page-break-inside: avoid; display: flex; flex-direction: column; }
-    .photo { width: 100%; height: 180px; object-fit: cover; display: block; }
-    .no-photo { width: 100%; height: 180px; background: #f0f7f0; display: flex; align-items: center; justify-content: center; font-size: 52px; }
+    /* 写真エリア：3:4縦長比率 */
+    .photo-wrap { width: 100%; aspect-ratio: 3/4; overflow: hidden; background: #f0f7f0; flex-shrink: 0; }
+    .photo { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+    .no-photo { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 52px; }
     .card-body { padding: 10px 12px 12px; flex: 1; display: flex; flex-direction: column; gap: 5px; }
-    .card-body h2 { font-size: 15px; color: #1a3a2a; font-weight: bold; }
+    .card-body h2 { font-size: 14px; color: #1a3a2a; font-weight: bold; }
     .tags { display: flex; gap: 5px; flex-wrap: wrap; }
-    .tag { font-size: 10px; border-radius: 20px; padding: 2px 8px; }
+    .tag { font-size: 9px; border-radius: 20px; padding: 2px 7px; }
     .tag.green { background: #e8f5ee; color: #2d6a4f; border: 1px solid #b0d8c0; }
     .tag.blue  { background: #e8f0f8; color: #2a4a6a; border: 1px solid #b0c8e0; }
-    .gps { font-size: 10px; color: #2d6a4f; }
-    .note { font-size: 11px; color: #555; line-height: 1.5; }
-    .meas-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-    .meas-item { background: #f0f7f0; border-radius: 6px; padding: 5px 8px; text-align: center; flex: 1; min-width: 52px; }
-    .ml { font-size: 9px; color: #666; display: block; margin-bottom: 1px; }
-    .mv { font-size: 17px; font-weight: bold; color: #2d6a4f; }
-    .mv small { font-size: 10px; font-weight: normal; color: #888; margin-left: 1px; }
-    .date { font-size: 10px; color: #aaa; margin-top: auto; padding-top: 4px; }
+    .gps { font-size: 9px; color: #2d6a4f; }
+    .note { font-size: 10px; color: #555; line-height: 1.5; }
+    .meas-grid { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .meas-item { background: #f0f7f0; border-radius: 6px; padding: 4px 6px; text-align: center; flex: 1; min-width: 44px; }
+    .ml { font-size: 8px; color: #666; display: block; margin-bottom: 1px; }
+    .mv { font-size: 15px; font-weight: bold; color: #2d6a4f; }
+    .mv small { font-size: 9px; font-weight: normal; color: #888; margin-left: 1px; }
+    .date { font-size: 9px; color: #aaa; margin-top: auto; padding-top: 4px; }
     @media print {
       body { padding: 8px; }
       .grid { gap: 10px; }
@@ -527,7 +553,7 @@ function printPDF(targets) {
     ※ 参考：国土技術政策総合研究所「公園樹木管理の高度化に関する研究」・日本緑化センター資料に基づく概算値。<br>
     ※ 正確な樹齢は年輪調査など専門的な手法による確認を推奨します。
   </p>
-  <script>window.onload = () => window.print();<\/script>
+  <script>window.onload = () => setTimeout(() => window.print(), 500);<\/script>
   </body></html>`;
 
   // Blob URLで確実に新タブで開く（ポップアップブロック回避）
@@ -578,7 +604,7 @@ function PdfModal({ trees, onClose }) {
           ))}
         </div>
         <button style={{ ...PRI, background: targets.length > 0 ? "#2a4a1a" : "#1a2a1a", borderColor: targets.length > 0 ? GOLD : "#4a7c5a", color: targets.length > 0 ? GOLD : "#4a7c5a", cursor: targets.length > 0 ? "pointer" : "not-allowed" }}
-          onClick={() => { if (targets.length > 0) { onClose(); setTimeout(() => printPDF(targets), 100); } }}>
+          onClick={async () => { if (targets.length > 0) { onClose(); await printPDF(targets); } }}>
           📄　{targets.length}本のレポートを出力する
         </button>
         <button style={GHO} onClick={onClose}>キャンセル</button>
@@ -617,27 +643,44 @@ function HeightApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
     <div>
       {pg>0&&pg<3&&<div style={{ display:"flex", gap:4, margin:"14px 0" }}>{["① 距離入力","② タップ測定","③ 結果"].map((l,i)=><div key={i} style={{ flex:1, textAlign:"center" }}><div style={{ height:3, borderRadius:2, background:i<pg?"#2d6a4f":"rgba(45,106,79,0.2)", marginBottom:4 }}/><span style={{ fontSize:10, color:i<pg?"#1b4332":"#74a98a" }}>{l}</span></div>)}</div>}
       {pg===0&&<div style={{ marginTop:12 }}>
-        <div style={CARD}><p style={{ fontSize:12, color:"#2d6a4f", textAlign:"center", marginBottom:10 }}>2点ロック方式（上下）</p>
-          <svg viewBox="0 0 280 150" style={{ width:"100%", height:"auto", display:"block" }}>
-            <line x1="20" y1="125" x2="260" y2="125" stroke="#4a9070" strokeWidth="1.5"/>
-            <line x1="220" y1="125" x2="220" y2="18" stroke={GRN} strokeWidth="3"/>
-            <ellipse cx="220" cy="18" rx="22" ry="14" fill="#2d6a4f" opacity="0.85"/>
-            <circle cx="50" cy="100" r="7" fill={GRN} opacity="0.85"/>
-            <line x1="50" y1="107" x2="50" y2="125" stroke={GRN} strokeWidth="2"/>
-            <line x1="50" y1="100" x2="220" y2="18" stroke={GOLD} strokeWidth="1.5" strokeDasharray="5,3"/>
-            <line x1="50" y1="100" x2="220" y2="120" stroke={BLUE} strokeWidth="1.5" strokeDasharray="5,3"/>
-            <text x="72" y="88" fill={GOLD} fontSize="9">上角</text>
-            <text x="72" y="115" fill={BLUE} fontSize="9">下角</text>
-            <line x1="232" y1="18" x2="232" y2="125" stroke="#a8d5b5" strokeWidth="1" strokeDasharray="3,2"/>
-            <text x="246" y="75" fill="#a8d5b5" fontSize="9">樹高</text>
+        <div style={CARD}><p style={{ fontSize:12, color:"#2d6a4f", textAlign:"center", marginBottom:10 }}>画面タップ方式（梢・根元）</p>
+          <svg viewBox="0 0 280 160" style={{ width:"100%", height:"auto", display:"block" }}>
+            {/* 地面 */}
+            <line x1="20" y1="135" x2="260" y2="135" stroke="#4a9070" strokeWidth="1.5"/>
+            {/* 幹 */}
+            <line x1="170" y1="135" x2="170" y2="22" stroke={GRN} strokeWidth="4"/>
+            {/* 樹冠 */}
+            <ellipse cx="170" cy="18" rx="24" ry="14" fill="#2d6a4f" opacity="0.85"/>
+            {/* 梢タップ */}
+            <circle cx="170" cy="18" r="9" fill={GOLD} opacity="0.9"/>
+            <text x="170" y="22" fill="#fff" fontSize="9" textAnchor="middle">👆</text>
+            <text x="192" y="16" fill={GOLD} fontSize="9">梢</text>
+            {/* 根元タップ */}
+            <circle cx="170" cy="130" r="9" fill={BLUE} opacity="0.9"/>
+            <text x="170" y="134" fill="#fff" fontSize="9" textAnchor="middle">👆</text>
+            <text x="192" y="134" fill={BLUE} fontSize="9">根元</text>
+            {/* 樹高ライン */}
+            <line x1="204" y1="18" x2="204" y2="130" stroke="#a8d5b5" strokeWidth="1" strokeDasharray="3,2"/>
+            <text x="218" y="78" fill="#a8d5b5" fontSize="9" textAnchor="middle">樹高</text>
+            {/* 人 */}
+            <circle cx="46" cy="106" r="8" fill={GRN} opacity="0.85"/>
+            <line x1="46" y1="114" x2="46" y2="135" stroke={GRN} strokeWidth="2"/>
+            {/* スマホ */}
+            <rect x="34" y="78" width="14" height="22" rx="2" fill="#333" opacity="0.7"/>
+            <rect x="36" y="80" width="10" height="16" rx="1" fill="#74b3ce" opacity="0.5"/>
+            {/* 距離 */}
+            <line x1="46" y1="148" x2="170" y2="148" stroke="#74b3ce" strokeWidth="1" strokeDasharray="4,3"/>
+            <text x="108" y="158" fill="#74b3ce" fontSize="9" textAnchor="middle">距離 d</text>
           </svg>
-          <p style={{ fontSize:11, color:"#5a8c6a", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>① 梢（てっぺん）をタップ → ② 根元（地面）をタップ</p>
-          <div style={{ background:"rgba(255,209,102,0.1)", border:"1px solid rgba(255,209,102,0.25)", borderRadius:8, padding:"8px 12px", marginTop:10 }}>
-            <p style={{ fontSize:11, color:GOLD, margin:0, lineHeight:1.7 }}>
-              💡 カメラに木全体が映るように離れてから<br/>
-              梢・根元の順にタップしてください
-            </p>
-          </div>
+          <p style={{ fontSize:11, color:"#2d6a4f", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>
+            カメラ画面の梢 → 根元を順にタップ<br/>
+            画面上の高さと距離から樹高を計算
+          </p>
+        </div>
+        <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
+          <p style={{ fontSize:12, color:"#2d6a4f", margin:0, lineHeight:1.7 }}>
+            💡 木全体がカメラに収まる距離まで離れてから<br/>梢・根元の順にタップしてください
+          </p>
         </div>
         <button style={PRI} onClick={() => setPg(1)}>📐　測定を開始する</button>
         <button style={GHO} onClick={onBack}>← メニューに戻る</button>
@@ -731,23 +774,44 @@ function SpreadApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
     <div>
       {pg>0&&pg<3&&<div style={{ display:"flex", gap:4, margin:"14px 0" }}>{["① 距離入力","② 角度測定","③ 結果"].map((l,i)=><div key={i} style={{ flex:1, textAlign:"center" }}><div style={{ height:3, borderRadius:2, background:i<pg?"#2d6a4f":"rgba(45,106,79,0.2)", marginBottom:4 }}/><span style={{ fontSize:10, color:i<pg?"#1b4332":"#74a98a" }}>{l}</span></div>)}</div>}
       {pg===0&&<div style={{ marginTop:12 }}>
-        <div style={CARD}><p style={{ fontSize:12, color:"#2d6a4f", textAlign:"center", marginBottom:10 }}>2点ロック方式（左右）</p>
-          <svg viewBox="0 0 280 150" style={{ width:"100%", height:"auto", display:"block" }}>
-            <line x1="20" y1="125" x2="260" y2="125" stroke="#4a9070" strokeWidth="1.5"/>
-            <line x1="140" y1="125" x2="140" y2="62" stroke={GRN} strokeWidth="3"/>
-            <ellipse cx="140" cy="52" rx="58" ry="26" fill="#2d6a4f" opacity="0.5" stroke={GRN} strokeWidth="1"/>
-            <circle cx="82" cy="52" r="5" fill={BLUE}/>
-            <circle cx="198" cy="52" r="5" fill={GOLD}/>
-            <circle cx="140" cy="96" r="7" fill={GRN} opacity="0.85"/>
-            <line x1="140" y1="103" x2="140" y2="125" stroke={GRN} strokeWidth="2"/>
-            <line x1="140" y1="96" x2="82" y2="52" stroke={BLUE} strokeWidth="1.5" strokeDasharray="5,3"/>
-            <line x1="140" y1="96" x2="198" y2="52" stroke={GOLD} strokeWidth="1.5" strokeDasharray="5,3"/>
-            <text x="96" y="92" fill={BLUE} fontSize="9">左角</text>
-            <text x="160" y="92" fill={GOLD} fontSize="9">右角</text>
-            <line x1="82" y1="137" x2="198" y2="137" stroke="#a8d5b5" strokeWidth="1" strokeDasharray="3,2"/>
-            <text x="140" y="148" fill="#a8d5b5" fontSize="9" textAnchor="middle">枝張り</text>
+        <div style={CARD}><p style={{ fontSize:12, color:"#2d6a4f", textAlign:"center", marginBottom:10 }}>画面タップ方式（枝の左端・右端）</p>
+          <svg viewBox="0 0 280 160" style={{ width:"100%", height:"auto", display:"block" }}>
+            {/* 地面 */}
+            <line x1="20" y1="135" x2="260" y2="135" stroke="#4a9070" strokeWidth="1.5"/>
+            {/* 幹 */}
+            <line x1="150" y1="135" x2="150" y2="75" stroke={GRN} strokeWidth="3"/>
+            {/* 樹冠 */}
+            <ellipse cx="150" cy="62" rx="72" ry="30" fill="#2d6a4f" opacity="0.45" stroke={GRN} strokeWidth="1"/>
+            {/* 枝左端タップ */}
+            <circle cx="78" cy="62" r="9" fill={BLUE} opacity="0.9"/>
+            <text x="78" y="66" fill="#fff" fontSize="9" textAnchor="middle">👆</text>
+            <text x="64" y="50" fill={BLUE} fontSize="9">左端</text>
+            {/* 枝右端タップ */}
+            <circle cx="222" cy="62" r="9" fill={GOLD} opacity="0.9"/>
+            <text x="222" y="66" fill="#fff" fontSize="9" textAnchor="middle">👆</text>
+            <text x="208" y="50" fill={GOLD} fontSize="9">右端</text>
+            {/* 枝張りライン */}
+            <line x1="78" y1="100" x2="222" y2="100" stroke="#a8d5b5" strokeWidth="1.5" strokeDasharray="3,2"/>
+            <text x="150" y="115" fill="#a8d5b5" fontSize="9" textAnchor="middle">枝張り</text>
+            {/* 人 */}
+            <circle cx="40" cy="108" r="8" fill={GRN} opacity="0.85"/>
+            <line x1="40" y1="116" x2="40" y2="135" stroke={GRN} strokeWidth="2"/>
+            {/* スマホ */}
+            <rect x="28" y="80" width="14" height="22" rx="2" fill="#333" opacity="0.7"/>
+            <rect x="30" y="82" width="10" height="16" rx="1" fill="#74b3ce" opacity="0.5"/>
+            {/* 距離 */}
+            <line x1="40" y1="148" x2="150" y2="148" stroke="#74b3ce" strokeWidth="1" strokeDasharray="4,3"/>
+            <text x="95" y="158" fill="#74b3ce" fontSize="9" textAnchor="middle">距離 d</text>
           </svg>
-          <p style={{ fontSize:11, color:"#5a8c6a", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>① 枝の左端をタップ → ② 枝の右端をタップ<br/>画面上の2点から枝張りを計算</p>
+          <p style={{ fontSize:11, color:"#2d6a4f", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>
+            カメラ画面の枝左端 → 右端を順にタップ<br/>
+            画面上の幅と距離から枝張りを計算
+          </p>
+        </div>
+        <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
+          <p style={{ fontSize:12, color:"#2d6a4f", margin:0, lineHeight:1.7 }}>
+            💡 枝の広がりが画面に収まる距離まで離れてから<br/>左端・右端の順にタップしてください
+          </p>
         </div>
         <button style={PRI} onClick={() => setPg(1)}>🌿　測定を開始する</button>
         <button style={GHO} onClick={onBack}>← メニューに戻る</button>
@@ -1094,40 +1158,42 @@ function TrunkApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTreeN
     <div>
       {pg>0&&pg<3&&<div style={{ display:"flex", gap:4, margin:"14px 0" }}>{["① 距離入力","② 角度測定","③ 結果"].map((l,i)=><div key={i} style={{ flex:1, textAlign:"center" }}><div style={{ height:3, borderRadius:2, background:i<pg?"#2d6a4f":"rgba(45,106,79,0.2)", marginBottom:4 }}/><span style={{ fontSize:10, color:i<pg?"#1b4332":"#74a98a" }}>{l}</span></div>)}</div>}
       {pg===0&&<div style={{ marginTop:12 }}>
-        <div style={CARD}><p style={{ fontSize:12, color:"#2d6a4f", textAlign:"center", marginBottom:10 }}>2点ロック方式（幹の左右）</p>
-          <svg viewBox="0 0 280 150" style={{ width:"100%", height:"auto", display:"block" }}>
-            <line x1="20" y1="125" x2="260" y2="125" stroke="#4a9070" strokeWidth="1.5"/>
-            {/* 幹（太い） */}
-            <rect x="125" y="40" width="30" height="85" rx="4" fill="#5d4037" opacity="0.8"/>
-            <line x1="125" y1="40" x2="125" y2="125" stroke="#8d6e63" strokeWidth="1"/>
-            <line x1="155" y1="40" x2="155" y2="125" stroke="#8d6e63" strokeWidth="1"/>
-            {/* 幹左端 */}
-            <circle cx="125" cy="82" r="5" fill={BLUE}/>
-            {/* 幹右端 */}
-            <circle cx="155" cy="82" r="5" fill={GOLD}/>
+        <div style={CARD}><p style={{ fontSize:12, color:"#2d6a4f", textAlign:"center", marginBottom:10 }}>画面タップ方式（幹の左端・右端）</p>
+          <svg viewBox="0 0 280 160" style={{ width:"100%", height:"auto", display:"block" }}>
+            {/* 地面 */}
+            <line x1="20" y1="130" x2="260" y2="130" stroke="#4a9070" strokeWidth="1.5"/>
+            {/* 幹 */}
+            <rect x="120" y="35" width="40" height="95" rx="6" fill="#5d4037" opacity="0.85"/>
+            {/* 幹左端タップ */}
+            <circle cx="120" cy="80" r="8" fill={BLUE} opacity="0.9"/>
+            <text x="120" y="84" fill="#fff" fontSize="9" textAnchor="middle">👆</text>
+            {/* 幹右端タップ */}
+            <circle cx="160" cy="80" r="8" fill={GOLD} opacity="0.9"/>
+            <text x="160" y="84" fill="#fff" fontSize="9" textAnchor="middle">👆</text>
             {/* 人 */}
-            <circle cx="50" cy="96" r="7" fill={GRN} opacity="0.85"/>
-            <line x1="50" y1="103" x2="50" y2="125" stroke={GRN} strokeWidth="2"/>
-            {/* 視線 */}
-            <line x1="50" y1="96" x2="125" y2="82" stroke={BLUE} strokeWidth="1.5" strokeDasharray="5,3"/>
-            <line x1="50" y1="96" x2="155" y2="82" stroke={GOLD} strokeWidth="1.5" strokeDasharray="5,3"/>
-            <text x="68" y="85" fill={BLUE} fontSize="9">左角</text>
-            <text x="86" y="100" fill={GOLD} fontSize="9">右角</text>
+            <circle cx="46" cy="100" r="8" fill={GRN} opacity="0.85"/>
+            <line x1="46" y1="108" x2="46" y2="130" stroke={GRN} strokeWidth="2"/>
+            {/* スマホ */}
+            <rect x="34" y="72" width="14" height="22" rx="2" fill="#333" opacity="0.7"/>
+            <rect x="36" y="74" width="10" height="16" rx="1" fill="#74b3ce" opacity="0.5"/>
             {/* 距離 */}
-            <line x1="50" y1="137" x2="140" y2="137" stroke="#74b3ce" strokeWidth="1" strokeDasharray="4,3"/>
-            <text x="90" y="148" fill="#74b3ce" fontSize="9" textAnchor="middle">距離 d</text>
+            <line x1="46" y1="144" x2="140" y2="144" stroke="#74b3ce" strokeWidth="1" strokeDasharray="4,3"/>
+            <text x="93" y="155" fill="#74b3ce" fontSize="9" textAnchor="middle">距離 d</text>
             {/* 直径 */}
-            <line x1="125" y1="32" x2="155" y2="32" stroke="#a8d5b5" strokeWidth="1.5"/>
-            <text x="140" y="26" fill="#a8d5b5" fontSize="9" textAnchor="middle">直径</text>
+            <line x1="120" y1="26" x2="160" y2="26" stroke="#a8d5b5" strokeWidth="1.5"/>
+            <text x="140" y="20" fill="#a8d5b5" fontSize="9" textAnchor="middle">直径</text>
+            {/* ラベル */}
+            <text x="108" y="70" fill={BLUE} fontSize="9" textAnchor="middle">左端</text>
+            <text x="172" y="70" fill={GOLD} fontSize="9" textAnchor="middle">右端</text>
           </svg>
-          <p style={{ fontSize:11, color:"#5a8c6a", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>
-            スマホを縦に持ったまま体ごと左右に向いてロック<br/>
-            左右の角度から直径 → 幹周り（×π）を計算
+          <p style={{ fontSize:11, color:"#2d6a4f", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>
+            カメラ画面の幹左端 → 右端を順にタップ<br/>
+            画面上の幅と距離から直径 → 幹周り（×π）を計算
           </p>
         </div>
-        <div style={{ background:"rgba(255,209,102,0.08)", border:"1px solid rgba(255,209,102,0.2)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
-          <p style={{ fontSize:12, color:GOLD, margin:0, lineHeight:1.7 }}>
-            💡 木から <strong>2〜5m</strong> 離れ、スマホを<strong>縦に持ったまま体ごと</strong>左端→右端の順に向けてロックしてください。
+        <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
+          <p style={{ fontSize:12, color:"#2d6a4f", margin:0, lineHeight:1.7 }}>
+            💡 木から <strong>2〜5m</strong> 離れ、幹が画面に大きく映る状態でタップすると精度が上がります
           </p>
         </div>
         <button style={PRI} onClick={() => setPg(1)}>🌲　測定を開始する</button>
@@ -1792,7 +1858,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
             <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{cur.name}</h2>
           </div>
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>{ printPDF([cur]); }} style={{ fontSize:12, color:GOLD, background:"rgba(255,209,102,0.1)", border:`1px solid rgba(255,209,102,0.3)`, borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>📄</button>
+            <button onClick={async ()=>{ await printPDF([cur]); }} style={{ fontSize:12, color:GOLD, background:"rgba(255,209,102,0.1)", border:`1px solid rgba(255,209,102,0.3)`, borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>📄</button>
             <button onClick={()=>openEdit(cur)} style={{ fontSize:12, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:8, padding:"6px 12px", cursor:"pointer", fontFamily:"inherit" }}>✏️ 編集</button>
             <button onClick={()=>doDelete(cur.id)} style={{ fontSize:12, color:"#ff8080", background:"rgba(220,50,50,0.1)", border:"1px solid rgba(220,50,50,0.4)", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>🗑️</button>
           </div>
@@ -2071,21 +2137,20 @@ async function saveTreeImage(tree) {
   };
   const sizes = chars.map((_, i) => Math.round(BASE - VARIANCE/2 + rng(i) * VARIANCE));
 
-  // 右下に縦並び（「大きな木」の上）
+  // 左縦書き（上から下へ・掛け軸スタイル）
   ctx.shadowColor = "rgba(0,0,0,0.7)";
   ctx.shadowBlur = 8;
-  ctx.textAlign = "right";
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.78)";
 
-  // 下から積み上げる（「大きな木」の上 = H-48 から上へ）
-  let curY = H - 80; // 「大きな木」テキストの上
-  // 下から描くので配列を逆順に
-  [...chars].reverse().forEach((ch, ri) => {
-    const i = chars.length - 1 - ri;
+  // 上から順に描く・左端から少し内側
+  const leftX = 52;
+  let curY = 120; // 上から開始
+  chars.forEach((ch, i) => {
     const s = sizes[i];
     ctx.font = `${s}px ${FONT}`;
-    ctx.fillText(ch, W - 52, curY);
-    curY -= s + 4;
+    ctx.fillText(ch, leftX, curY);
+    curY += s + 5;
   });
 
   // 記録日・アプリ名（最下部）
@@ -2124,7 +2189,102 @@ function MapApp({ trees, onSelectTree, onBack }) {
   const mapInstanceRef = useRef(null);
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [nearbyTrees, setNearbyTrees] = useState([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbyError, setNearbyError] = useState(null);
+  const [userPos, setUserPos] = useState(null);
+  const [searchRadius, setSearchRadius] = useState(5); // km
   const treesWithGPS = trees.filter(t => t.gps?.lat && t.gps?.lng);
+
+  // Overpass API で近くの巨木を検索
+  const searchNearby = async (lat, lng, radiusKm) => {
+    setNearbyLoading(true);
+    setNearbyError(null);
+    try {
+      const r = radiusKm * 1000;
+      // natural=tree かつ circumference や diameter が登録されているものを検索
+      const query = `[out:json][timeout:15];
+(
+  node["natural"="tree"]["circumference"](around:${r},${lat},${lng});
+  node["natural"="tree"]["diameter"](around:${r},${lat},${lng});
+  node["natural"="tree"]["name"](around:${r},${lat},${lng});
+);
+out body 50;`;
+      const res = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        body: query
+      });
+      if (!res.ok) throw new Error("検索失敗");
+      const data = await res.json();
+      const results = (data.elements || []).map(el => ({
+        id: el.id,
+        lat: el.lat,
+        lng: el.lon,
+        name: el.tags?.name || el.tags?.species || "名前不明の木",
+        species: el.tags?.species || el.tags?.["species:ja"] || "",
+        circumference: el.tags?.circumference ? Math.round(parseFloat(el.tags.circumference) * 100) + "cm" : null,
+        diameter: el.tags?.diameter ? parseFloat(el.tags.diameter).toFixed(1) + "m" : null,
+        height: el.tags?.height ? parseFloat(el.tags.height).toFixed(1) + "m" : null,
+        dist: Math.round(Math.sqrt((el.lat-lat)**2 + (el.lon-lng)**2) * 111000),
+      })).sort((a,b) => a.dist - b.dist);
+      setNearbyTrees(results);
+      // 地図にマーカー追加
+      if (mapInstanceRef.current && window.L) {
+        addNearbyMarkers(results, lat, lng);
+      }
+    } catch(e) {
+      setNearbyError("近くの巨木を検索できませんでした。ネットワークを確認してください。");
+    }
+    setNearbyLoading(false);
+  };
+
+  const getNearby = async () => {
+    try {
+      const pos = await getGPS();
+      setUserPos(pos);
+      await searchNearby(pos.lat, pos.lng, searchRadius);
+      // 地図を現在地に移動
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setView([pos.lat, pos.lng], 13);
+      }
+    } catch(e) {
+      setNearbyError("位置情報を取得できませんでした。");
+    }
+  };
+
+  const addNearbyMarkers = (results, userLat, userLng) => {
+    const L = window.L;
+    const map = mapInstanceRef.current;
+    if (!L || !map) return;
+    // 現在地マーカー
+    const userIcon = L.divIcon({
+      className: "",
+      html: `<div style="background:#ff6b6b;border:3px solid #fff;border-radius:50%;width:16px;height:16px;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,
+      iconSize: [16, 16], iconAnchor: [8, 8]
+    });
+    L.marker([userLat, userLng], { icon: userIcon }).addTo(map).bindPopup("📍 現在地");
+    // 巨木マーカー（緑の円）
+    const nearbyIcon = L.divIcon({
+      className: "",
+      html: `<div style="background:rgba(45,106,79,0.85);border:2px solid #7ecba1;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🌲</div>`,
+      iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -14]
+    });
+    results.slice(0, 30).forEach(t => {
+      const info = [
+        t.circumference ? `幹周り ${t.circumference}` : null,
+        t.diameter ? `直径 ${t.diameter}` : null,
+        t.height ? `樹高 ${t.height}` : null,
+        t.species ? `樹種: ${t.species}` : null,
+      ].filter(Boolean).join("<br>");
+      L.marker([t.lat, t.lng], { icon: nearbyIcon })
+        .addTo(map)
+        .bindPopup(`<div style="font-family:serif;min-width:140px;">
+          <b style="color:#1a3a2a;">${t.name}</b><br>
+          <span style="font-size:11px;color:#5a8c6a;">${info || "情報なし"}</span><br>
+          <span style="font-size:10px;color:#aaa;">約${t.dist}m先</span>
+        </div>`);
+    });
+  };
 
   useEffect(() => {
     // Leaflet CSS + JS を動的に読み込む
@@ -2202,9 +2362,30 @@ function MapApp({ trees, onSelectTree, onBack }) {
   return (
     <div>
       <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:12 }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", color:"#2d6a4f", fontSize:22, cursor:"pointer", padding:0 }}>‹</button>
+        <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
         <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>大きな木の地図</h2>
-        <span style={{ fontSize:12, color:"#5a9070", marginLeft:4 }}>{treesWithGPS.length}本表示</span>
+      </div>
+      {/* 近くの巨木検索 */}
+      <div style={{ ...CARD, marginBottom:12 }}>
+        <p style={{ fontSize:13, color:"#2d6a4f", marginBottom:10, fontWeight:"bold" }}>🌲 近くの巨木を探す</p>
+        <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:10 }}>
+          <select value={searchRadius} onChange={e => setSearchRadius(+e.target.value)}
+            style={{ ...INP, flex:1, fontSize:13, appearance:"none" }}>
+            <option value={1}>半径1km</option>
+            <option value={3}>半径3km</option>
+            <option value={5}>半径5km</option>
+            <option value={10}>半径10km</option>
+          </select>
+          <button onClick={getNearby} disabled={nearbyLoading}
+            style={{ padding:"10px 16px", background:"#1a3a2a", border:"1px solid #7ecba1", borderRadius:10, color:"#7ecba1", fontSize:13, cursor:nearbyLoading?"not-allowed":"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+            {nearbyLoading ? "検索中…" : "📍 現在地から検索"}
+          </button>
+        </div>
+        {nearbyError && <p style={{ fontSize:12, color:"#ff8080", margin:0 }}>{nearbyError}</p>}
+        {nearbyTrees.length > 0 && <p style={{ fontSize:11, color:"#5a9070", margin:0 }}>{nearbyTrees.length}本見つかりました（地図上の🌲）</p>}
+        {nearbyTrees.length === 0 && !nearbyLoading && !nearbyError && (
+          <p style={{ fontSize:11, color:"#5a9070", margin:0 }}>OpenStreetMapに登録されている巨木を検索します</p>
+        )}
       </div>
 
       {loadError && (
@@ -2231,7 +2412,7 @@ function MapApp({ trees, onSelectTree, onBack }) {
 
       {treesWithGPS.length > 0 && (
         <div style={CARD}>
-          <p style={{ fontSize:12, color:"#2d6a4f", marginBottom:10 }}>📍 登録済みの木</p>
+          <p style={{ fontSize:12, color:"#2d6a4f", marginBottom:10 }}>🌳 登録済みの木</p>
           {treesWithGPS.map(t => (
             <button key={t.id} onClick={() => onSelectTree(t.id)}
               style={{ width:"100%", display:"flex", alignItems:"center", gap:10, padding:"8px 0", background:"none", border:"none", borderBottom:"1px solid rgba(126,203,161,0.1)", cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
@@ -2246,6 +2427,31 @@ function MapApp({ trees, onSelectTree, onBack }) {
               <span style={{ color:"#5a8c6a", fontSize:14 }}>›</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* 近くの巨木リスト */}
+      {nearbyTrees.length > 0 && (
+        <div style={CARD}>
+          <p style={{ fontSize:12, color:"#2d6a4f", marginBottom:10 }}>🌲 近くの巨木（OpenStreetMap）</p>
+          {nearbyTrees.slice(0, 20).map(t => (
+            <div key={t.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:"1px solid rgba(126,203,161,0.1)" }}>
+              <span style={{ fontSize:20 }}>🌲</span>
+              <div style={{ flex:1 }}>
+                <p style={{ fontSize:13, color:"#1a3a2a", margin:0, fontWeight:"bold" }}>{t.name}</p>
+                <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:2 }}>
+                  {t.circumference && <span style={{ fontSize:11, color:BLUE }}>幹周り {t.circumference}</span>}
+                  {t.height && <span style={{ fontSize:11, color:GRN }}>樹高 {t.height}</span>}
+                  {t.species && <span style={{ fontSize:11, color:"#5a9070" }}>{t.species}</span>}
+                </div>
+              </div>
+              <span style={{ fontSize:11, color:"#aaa", whiteSpace:"nowrap" }}>約{t.dist}m</span>
+            </div>
+          ))}
+          <p style={{ fontSize:10, color:"#aaa", marginTop:8, lineHeight:1.6 }}>
+            出典：OpenStreetMap contributors<br/>
+            ※ 環境省巨樹データベースとは異なります
+          </p>
         </div>
       )}
     </div>
