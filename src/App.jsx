@@ -1210,10 +1210,348 @@ function TrunkApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTreeN
 }
 
 // ================================================================
+// 新規登録ウィザード
+// ================================================================
+function RegisterWizard({ prof, trees, onComplete, onBack }) {
+  const STEPS = ["📷 写真", "📝 基本情報", "📐 樹高", "🌿 枝張り", "🌲 幹周り", "✅ 確認"];
+  const [step, setStep] = useState(0);
+  const [photo, setPhoto] = useState(null);
+  const [name, setName] = useState("");
+  const [species, setSpecies] = useState("");
+  const [location, setLocation] = useState("");
+  const [note, setNote] = useState("");
+  const [gps, setGps] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [height, setHeight] = useState(null);
+  const [spread, setSpread] = useState(null);
+  const [trunk, setTrunk] = useState(null);
+  const [age, setAge] = useState(null);
+  const [ageAuto, setAgeAuto] = useState(false);
+  const [measDist, setMeasDist] = useState("");
+  const fileRef = useRef();
+
+  const next = () => setStep(s => Math.min(s + 1, STEPS.length - 1));
+  const prev = () => setStep(s => Math.max(s - 1, 0));
+
+  const onPhoto = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = async ev => { const res = await resizePhoto(ev.target.result, 800); setPhoto(res); next(); };
+    r.readAsDataURL(f);
+  };
+
+  const getGPSNow = async () => {
+    setGpsLoading(true);
+    try { const g = await getGPS(); setGps(g); } catch(e) { alert("GPS取得失敗: " + e); }
+    setGpsLoading(false);
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) { alert("木の名前を入力してください"); setStep(1); return; }
+    const t = {
+      id: newId(), name: name.trim(), species, location, note, photo, gps,
+      measurements: { height: height||"", spread: spread||"", trunk: trunk||"", age: age||"" },
+      createdAt: today(), updatedAt: today()
+    };
+    onComplete(t);
+  };
+
+  const stepBar = (
+    <div style={{ display:"flex", gap:2, marginBottom:16 }}>
+      {STEPS.map((l, i) => (
+        <div key={i} style={{ flex:1, textAlign:"center" }}>
+          <div style={{ height:3, borderRadius:2, background: i <= step ? "#2d6a4f" : "rgba(45,106,79,0.2)", marginBottom:3 }} />
+          <span style={{ fontSize:9, color: i <= step ? "#2d6a4f" : "#74a98a", display:"block", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{l}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const hdr = (title) => (
+    <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:14 }}>
+      <button onClick={step===0?onBack:prev} style={{ background:"none", border:"none", color:"#2d6a4f", fontSize:22, cursor:"pointer", padding:0 }}>‹</button>
+      <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{title}</h2>
+    </div>
+  );
+
+  // STEP 0: 写真
+  if (step === 0) return (
+    <div>
+      {hdr("新しい木を登録")}
+      {stepBar}
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={onPhoto} />
+      <div style={CARD}>
+        <p style={{ fontSize:13, color:"#2d6a4f", marginBottom:12, fontWeight:"bold" }}>📷 木の写真を撮りましょう</p>
+        {photo
+          ? <div style={{ position:"relative", marginBottom:12 }}>
+              <img src={photo} alt="" style={{ width:"100%", maxHeight:240, objectFit:"cover", borderRadius:10, display:"block" }} />
+              <button onClick={() => fileRef.current.click()} style={{ position:"absolute", bottom:8, right:8, background:"rgba(0,0,0,0.6)", border:"1px solid #fff", borderRadius:8, color:"#fff", fontSize:12, padding:"5px 10px", cursor:"pointer", fontFamily:"inherit" }}>📷 撮り直す</button>
+            </div>
+          : <button onClick={() => fileRef.current.click()} style={{ width:"100%", padding:"40px 20px", background:"rgba(45,106,79,0.05)", border:"2px dashed rgba(45,106,79,0.3)", borderRadius:12, color:"#5a8c6a", fontSize:15, cursor:"pointer", fontFamily:"inherit", textAlign:"center", marginBottom:12, display:"block" }}>
+              📷　写真を撮影 / ライブラリから選択
+            </button>
+        }
+      </div>
+      {photo && <button style={PRI} onClick={next}>次へ → 基本情報</button>}
+      <button style={GHO} onClick={next}>スキップ（写真なしで続ける）</button>
+    </div>
+  );
+
+  // STEP 1: 基本情報
+  if (step === 1) return (
+    <div>
+      {hdr("基本情報")}
+      {stepBar}
+      <div style={CARD}>
+        <span style={LBL}>木の名前（必須）：</span>
+        <input style={{ ...INP, marginBottom:12, fontSize:16 }} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="例: 住吉公園のせんだん" />
+        <span style={LBL}>樹種：</span>
+        <select value={species} onChange={e => setSpecies(e.target.value)} style={{ ...INP, marginBottom:12, fontSize:14, appearance:"none" }}>
+          <option value="">選択してください</option>
+          {TREE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <span style={LBL}>場所・区画：</span>
+        <input style={{ ...INP, marginBottom:12, fontSize:16 }} type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="例: 大阪府・住吉公園" />
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom: gps ? 6 : 8 }}>
+          <span style={{ ...LBL, marginBottom:0, flex:1 }}>📍 位置情報：</span>
+          <button onClick={getGPSNow} style={{ fontSize:12, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:6, padding:"5px 12px", cursor:"pointer", fontFamily:"inherit" }}>
+            {gpsLoading ? "取得中..." : gps ? "📍 再取得" : "📍 現在地を取得"}
+          </button>
+        </div>
+        {gps && <div style={{ background:"rgba(45,106,79,0.06)", borderRadius:8, padding:"6px 12px", marginBottom:8, display:"flex", justifyContent:"space-between" }}>
+          <span style={{ fontSize:11, color:"#2d6a4f" }}>✅ {gps.lat}, {gps.lng}</span>
+          <button onClick={() => setGps(null)} style={{ fontSize:11, color:"#ff8080", background:"none", border:"none", cursor:"pointer" }}>✕</button>
+        </div>}
+        <span style={LBL}>メモ：</span>
+        <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="樹形の特徴、感想など..." style={{ ...INP, resize:"vertical", minHeight:64, fontSize:14 }} />
+      </div>
+      <button style={PRI} onClick={() => { if (!name.trim()) { alert("木の名前を入力してください"); return; } next(); }}>次へ → 樹高を測定する</button>
+      <button style={GHO} onClick={prev}>← 戻る</button>
+    </div>
+  );
+
+  // STEP 2: 樹高
+  if (step === 2) return (
+    <div>
+      {hdr("樹高を測定")}
+      {stepBar}
+      <WizardMeasHeight prof={prof} onMeasured={(h, dist) => { setHeight(h); setMeasDist(dist); next(); }} onSkip={next} />
+    </div>
+  );
+
+  // STEP 3: 枝張り
+  if (step === 3) return (
+    <div>
+      {hdr("枝張りを測定")}
+      {stepBar}
+      <WizardMeasSpread prof={prof} initialDist={measDist} onMeasured={s => { setSpread(s); next(); }} onSkip={next} />
+    </div>
+  );
+
+  // STEP 4: 幹周り
+  if (step === 4) return (
+    <div>
+      {hdr("幹周りを測定")}
+      {stepBar}
+      <WizardMeasTrunk prof={prof} onMeasured={circ => {
+        setTrunk(circ);
+        if (species) { setAge(estimateAge(parseFloat(circ), species)+""); setAgeAuto(true); }
+        next();
+      }} onSkip={next} />
+    </div>
+  );
+
+  // STEP 5: 確認・保存
+  return (
+    <div>
+      {hdr("確認・保存")}
+      {stepBar}
+      {photo && <div style={{ borderRadius:12, overflow:"hidden", marginBottom:12 }}>
+        <img src={photo} alt={name} style={{ width:"100%", maxHeight:200, objectFit:"cover", display:"block" }} />
+      </div>}
+      <div style={CARD}>
+        <p style={{ fontSize:16, fontWeight:"bold", color:"#1a3a2a", marginBottom:8 }}>{name}</p>
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:8 }}>
+          {species && <span style={{ fontSize:12, background:"rgba(45,106,79,0.1)", borderRadius:20, padding:"3px 10px", color:"#2d6a4f" }}>{species}</span>}
+          {location && <span style={{ fontSize:12, background:"rgba(116,179,206,0.12)", borderRadius:20, padding:"3px 10px", color:BLUE }}>{location}</span>}
+          {gps && <span style={{ fontSize:12, background:"rgba(45,106,79,0.06)", borderRadius:20, padding:"3px 10px", color:"#2d6a4f" }}>📍 GPS取得済</span>}
+        </div>
+        {note && <p style={{ fontSize:13, color:"#5a8c6a", margin:0 }}>{note}</p>}
+      </div>
+      <div style={CARD}>
+        <p style={{ fontSize:13, color:"#2d6a4f", marginBottom:10 }}>測定値</p>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          {[["樹高", height, "m", GRN], ["枝張り", spread, "m", GOLD], ["幹周り", trunk, "cm", BLUE], ["推定樹齢", age, "年", "#a8d5b5"]].map(([l,v,u,c]) => (
+            <div key={l} style={{ flex:1, minWidth:68, background:"rgba(255,255,255,0.7)", borderRadius:10, padding:"8px 10px", textAlign:"center", border:"1px solid rgba(45,106,79,0.15)" }}>
+              <p style={{ fontSize:10, color:"#5a8c6a", margin:"0 0 2px" }}>{l}</p>
+              <p style={{ fontSize:20, fontWeight:"bold", color: v ? c : "#ccc", margin:0 }}>{v || "―"}</p>
+              {v && <p style={{ fontSize:10, color:"#5a8c6a", margin:0 }}>{u}</p>}
+            </div>
+          ))}
+        </div>
+        {ageAuto && <p style={{ fontSize:11, color:GOLD, margin:"8px 0 0" }}>🤖 推定樹齢は幹周りと樹種から自動計算</p>}
+      </div>
+      <button style={{ ...PRI, background:"#1a3a2a", borderColor:GRN, color:GRN }} onClick={handleSave}>
+        🌳　この木を登録する
+      </button>
+      <button style={GHO} onClick={prev}>← 戻って修正する</button>
+    </div>
+  );
+}
+
+// ── ウィザード用：樹高測定 ──
+function WizardMeasHeight({ prof, onMeasured, onSkip }) {
+  const [top, setTop] = useState(null);
+  const [bot, setBot] = useState(null);
+  const [dist, setDist] = useState("");
+  const [walkCount, setWalkCount] = useState("");
+  const [bodyH, setBodyH] = useState(prof.bodyH||"");
+  const [stride, setStride] = useState(prof.stride||null);
+  const [eyeH, setEyeH] = useState(prof.eyeH||"1.5");
+  const [distMode, setDistMode] = useState(1);
+  const [showCam, setShowCam] = useState(false);
+  const dummyOrient = useCallback(() => {}, []);
+  const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(dummyOrient);
+  const canCalc = top!==null&&bot!==null&&!!dist&&!!eyeH;
+
+  const doCalc = () => {
+    if (!canCalc) return;
+    const d = parseFloat(dist), e = parseFloat(eyeH);
+    const VFOV = 45;
+    const topA = -(top - 0.5) * VFOV;
+    const botA = -(bot - 0.5) * VFOV;
+    const h = +(d * (Math.tan(topA*Math.PI/180) - Math.tan(botA*Math.PI/180)) + e).toFixed(1);
+    stopCamera();
+    onMeasured(Math.max(0.1, h)+"", dist);
+  };
+
+  if (!showCam) return (
+    <>
+      <DistPanel bodyH={bodyH} setBodyH={setBodyH} eyeH={eyeH} setEyeH={setEyeH} dist={dist} setDist={setDist} distMode={distMode} setDistMode={setDistMode} stride={stride} setStride={setStride} walkCount={walkCount} setWalkCount={setWalkCount} showEyeH />
+      <button style={PRI} onClick={() => setShowCam(true)} disabled={!dist}>次へ → カメラで測定する</button>
+      <button style={GHO} onClick={onSkip}>スキップ（樹高なしで次へ）</button>
+    </>
+  );
+
+  return (
+    <>
+      <HeightTapView videoRef={videoRef} cameraOn={cameraOn} startAll={startAll} sensorOn={sensorOn}
+        top={top} bot={bot} onLockTop={setTop} onLockBot={setBot} onRedo={() => { setTop(null); setBot(null); }} />
+      <button onClick={doCalc} style={{ ...PRI, background:canCalc?"#2a4a1a":"#1a2a1a", borderColor:canCalc?GOLD:"#4a7c5a", color:canCalc?GOLD:"#4a7c5a", cursor:canCalc?"pointer":"not-allowed" }}>
+        📐　樹高を計算して次へ {!canCalc&&(top===null?"（梢をタップ）":bot===null?"（根元をタップ）":"")}
+      </button>
+      <button style={GHO} onClick={() => { stopCamera(); setShowCam(false); }}>← 距離入力に戻る</button>
+      <button style={GHO} onClick={() => { stopCamera(); onSkip(); }}>スキップ</button>
+    </>
+  );
+}
+
+// ── ウィザード用：枝張り測定 ──
+function WizardMeasSpread({ prof, initialDist, onMeasured, onSkip }) {
+  const [left, setLeft] = useState(null);
+  const [right, setRight] = useState(null);
+  const [dist, setDist] = useState(initialDist||"");
+  const [walkCount, setWalkCount] = useState("");
+  const [bodyH, setBodyH] = useState(prof.bodyH||"");
+  const [stride, setStride] = useState(prof.stride||null);
+  const [distMode, setDistMode] = useState(1);
+  const [showCam, setShowCam] = useState(!!initialDist);
+  const dummyOrient = useCallback(() => {}, []);
+  const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(dummyOrient);
+  const canCalc = left!==null&&right!==null&&!!dist;
+
+  const doCalc = () => {
+    if (!canCalc) return;
+    const FOV = 60;
+    const lA = (left - 0.5) * FOV;
+    const rA = (right - 0.5) * FOV;
+    const s = +(parseFloat(dist) * (Math.tan(Math.abs(lA)*Math.PI/180) + Math.tan(Math.abs(rA)*Math.PI/180))).toFixed(1);
+    stopCamera();
+    onMeasured(s+"");
+  };
+
+  if (!showCam) return (
+    <>
+      {initialDist && <div style={{ background:"rgba(45,106,79,0.08)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
+        <p style={{ fontSize:12, color:"#2d6a4f", margin:0 }}>📏 樹高測定の距離 {initialDist}m を引き継いでいます</p>
+      </div>}
+      <DistPanel bodyH={bodyH} setBodyH={setBodyH} eyeH="" setEyeH={() => {}} dist={dist} setDist={setDist} distMode={distMode} setDistMode={setDistMode} stride={stride} setStride={setStride} walkCount={walkCount} setWalkCount={setWalkCount} showEyeH={false} />
+      <button style={PRI} onClick={() => setShowCam(true)} disabled={!dist}>次へ → カメラで測定する</button>
+      <button style={GHO} onClick={onSkip}>スキップ（枝張りなしで次へ）</button>
+    </>
+  );
+
+  return (
+    <>
+      <TrunkTapView videoRef={videoRef} cameraOn={cameraOn} startAll={startAll} sensorOn={sensorOn}
+        left={left} right={right} onLockLeft={setLeft} onLockRight={setRight}
+        onRedo={() => { setLeft(null); setRight(null); }}
+        labelLeft="枝の左端" labelRight="枝の右端" />
+      <button onClick={doCalc} style={{ ...PRI, background:canCalc?"#2a4a1a":"#1a2a1a", borderColor:canCalc?GOLD:"#4a7c5a", color:canCalc?GOLD:"#4a7c5a", cursor:canCalc?"pointer":"not-allowed" }}>
+        🌿　枝張りを計算して次へ {!canCalc&&"（左右をタップ）"}
+      </button>
+      <button style={GHO} onClick={() => { stopCamera(); setShowCam(false); }}>← 距離入力に戻る</button>
+      <button style={GHO} onClick={() => { stopCamera(); onSkip(); }}>スキップ</button>
+    </>
+  );
+}
+
+// ── ウィザード用：幹周り測定 ──
+function WizardMeasTrunk({ prof, onMeasured, onSkip }) {
+  const [left, setLeft] = useState(null);
+  const [right, setRight] = useState(null);
+  const [dist, setDist] = useState("");
+  const [walkCount, setWalkCount] = useState("");
+  const [bodyH, setBodyH] = useState(prof.bodyH||"");
+  const [stride, setStride] = useState(prof.stride||null);
+  const [distMode, setDistMode] = useState(1);
+  const [showCam, setShowCam] = useState(false);
+  const dummyOrient = useCallback(() => {}, []);
+  const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(dummyOrient);
+  const canCalc = left!==null&&right!==null&&!!dist;
+
+  const doCalc = () => {
+    if (!canCalc) return;
+    const FOV = 60;
+    const lA = (left - 0.5) * FOV;
+    const rA = (right - 0.5) * FOV;
+    const diamM = +(parseFloat(dist) * (Math.tan(Math.abs(lA)*Math.PI/180) + Math.tan(Math.abs(rA)*Math.PI/180))).toFixed(3);
+    const circ = +(diamM * 100 * Math.PI).toFixed(1);
+    stopCamera();
+    onMeasured(circ+"");
+  };
+
+  if (!showCam) return (
+    <>
+      <div style={{ ...CARD, background:"rgba(255,209,102,0.08)", border:"1px solid rgba(255,209,102,0.2)" }}>
+        <p style={{ fontSize:12, color:GOLD, margin:0, lineHeight:1.7 }}>💡 木から <strong>2〜5m</strong> 離れて幹が大きく映る状態にしてください</p>
+      </div>
+      <DistPanel bodyH={bodyH} setBodyH={setBodyH} eyeH="" setEyeH={() => {}} dist={dist} setDist={setDist} distMode={distMode} setDistMode={setDistMode} stride={stride} setStride={setStride} walkCount={walkCount} setWalkCount={setWalkCount} showEyeH={false} />
+      <button style={PRI} onClick={() => setShowCam(true)} disabled={!dist}>次へ → カメラで測定する</button>
+      <button style={GHO} onClick={onSkip}>スキップ（幹周りなしで次へ）</button>
+    </>
+  );
+
+  return (
+    <>
+      <TrunkTapView videoRef={videoRef} cameraOn={cameraOn} startAll={startAll} sensorOn={sensorOn}
+        left={left} right={right} onLockLeft={setLeft} onLockRight={setRight}
+        onRedo={() => { setLeft(null); setRight(null); }}
+        labelLeft="幹の左端" labelRight="幹の右端" />
+      <button onClick={doCalc} style={{ ...PRI, background:canCalc?"#2a4a1a":"#1a2a1a", borderColor:canCalc?GOLD:"#4a7c5a", color:canCalc?GOLD:"#4a7c5a", cursor:canCalc?"pointer":"not-allowed" }}>
+        🌲　幹周りを計算して次へ {!canCalc&&"（左右をタップ）"}
+      </button>
+      <button style={GHO} onClick={() => { stopCamera(); setShowCam(false); }}>← 距離入力に戻る</button>
+      <button style={GHO} onClick={() => { stopCamera(); onSkip(); }}>スキップ</button>
+    </>
+  );
+}
+
+// ================================================================
 // CARTE APP
 // ================================================================
 function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, onMeasureTrunk, initialSelectedId }) {
-  const [view, setView] = useState(initialSelectedId ? "detail" : "list");
+  const [view, setView] = useState(initialSelectedId ? "detail" : "list"); // list | detail | form | wizard
   const [selected, setSelected] = useState(initialSelectedId ? trees.find(t=>t.id===initialSelectedId)||null : null);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState("");
@@ -1293,7 +1631,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
         </>}
 
         {/* 登録ボタン（上部） */}
-        <button style={{ ...PRI, marginBottom:14 }} onClick={openNew}>＋　新しい木を登録する</button>
+        <button style={{ ...PRI, marginBottom:14 }} onClick={() => setView("wizard")}>＋　新しい木を登録する</button>
 
         {trees.length>0&&<div style={{ position:"relative", marginBottom:12 }}>
           <input style={{ ...INP, paddingLeft:36, fontSize:14 }} type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="名前・樹種・場所で検索..." />
@@ -1325,6 +1663,21 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
 
         {showPdf && <PdfModal trees={trees} onClose={() => setShowPdf(false)} />}
       </>}
+
+      {/* WIZARD */}
+      {view==="wizard"&&<RegisterWizard
+        prof={loadProfile()}
+        trees={trees}
+        onComplete={async (t) => {
+          onUpdate([t, ...trees]);
+          setSelected(t);
+          setView("detail");
+          if (t.photo && (t.measurements?.height||t.measurements?.trunk||t.measurements?.spread)) {
+            try { await saveTreeImage(t); } catch(e) {}
+          }
+        }}
+        onBack={() => setView("list")}
+      />}
 
       {/* FORM */}
       {view==="form"&&<>
