@@ -1281,7 +1281,8 @@ function TrunkApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTreeN
 // 新規登録ウィザード
 // ================================================================
 function RegisterWizard({ prof, trees, onComplete, onBack }) {
-  const STEPS = ["📷 写真", "📝 基本情報", "📐 樹高", "🌿 枝張り", "🌲 幹周り", "✅ 確認"];
+  // 新しい順番：幹周り(+GPS) → 写真 → 樹高 → 枝張り → 基本情報 → 確認
+  const STEPS = ["🌲 幹周り", "📷 写真", "📐 樹高", "🌿 枝張り", "📝 基本情報", "✅ 確認"];
   const [step, setStep] = useState(0);
   const [photo, setPhoto] = useState(null);
   const [name, setName] = useState("");
@@ -1295,7 +1296,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
   const [trunk, setTrunk] = useState(null);
   const [age, setAge] = useState(null);
   const [ageAuto, setAgeAuto] = useState(false);
-  const [measDist, setMeasDist] = useState("");
+  const [measDist, setMeasDist] = useState(""); // 樹高→枝張り距離引き継ぎ
   const fileRef = useRef();
 
   const next = () => setStep(s => Math.min(s + 1, STEPS.length - 1));
@@ -1315,7 +1316,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) { alert("木の名前を入力してください"); setStep(1); return; }
+    if (!name.trim()) { alert("木の名前を入力してください"); setStep(4); return; }
     const t = {
       id: newId(), name: name.trim(), species, location, note, photo, gps,
       measurements: { height: height||"", spread: spread||"", trunk: trunk||"", age: age||"" },
@@ -1335,24 +1336,50 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
     </div>
   );
 
-  const hdr = (title) => (
-    <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:14 }}>
-      <button onClick={step===0?onBack:prev} style={{ background:"none", border:"none", color:"#2d6a4f", fontSize:22, cursor:"pointer", padding:0 }}>‹</button>
-      <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{title}</h2>
+  const hdr = (title, hint) => (
+    <div style={{ paddingTop:8, marginBottom:14 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom: hint ? 6 : 0 }}>
+        <button onClick={step===0?onBack:prev} style={{ background:"none", border:"none", color:"#2d6a4f", fontSize:22, cursor:"pointer", padding:0 }}>‹</button>
+        <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{title}</h2>
+      </div>
+      {hint && <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.2)", borderRadius:8, padding:"7px 12px", marginLeft:32 }}>
+        <p style={{ fontSize:12, color:"#2d6a4f", margin:0 }}>{hint}</p>
+      </div>}
     </div>
   );
 
-  // STEP 0: 写真
+  // STEP 0: 幹周り（+ GPS自動取得）
   if (step === 0) return (
     <div>
-      {hdr("新しい木を登録")}
+      {hdr("幹周りを測定", "🌲 木の真横（3〜5歩）に立って測定します")}
+      {stepBar}
+      {/* GPS自動取得ボタン */}
+      <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.2)", borderRadius:12, padding:"12px 14px", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div>
+          <p style={{ fontSize:13, color:"#2d6a4f", margin:"0 0 2px", fontWeight:"bold" }}>📍 位置情報を取得</p>
+          <p style={{ fontSize:11, color:"#5a9070", margin:0 }}>木の真横が一番正確です</p>
+        </div>
+        <button onClick={getGPSNow} style={{ padding:"8px 14px", background: gps ? "#1a3a2a" : "rgba(45,106,79,0.15)", border:"1px solid rgba(45,106,79,0.4)", borderRadius:8, color: gps ? GRN : "#2d6a4f", fontSize:12, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
+          {gpsLoading ? "取得中…" : gps ? "✅ 取得済" : "📍 取得する"}
+        </button>
+      </div>
+      <WizardMeasTrunk prof={prof} onMeasured={circ => {
+        setTrunk(circ);
+        next();
+      }} onSkip={next} />
+    </div>
+  );
+
+  // STEP 1: 写真（15〜20歩離れて）
+  if (step === 1) return (
+    <div>
+      {hdr("写真を撮影", "📷 15〜20歩ほど離れて木全体を撮影します")}
       {stepBar}
       <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={onPhoto} />
       <div style={CARD}>
-        <p style={{ fontSize:13, color:"#2d6a4f", marginBottom:12, fontWeight:"bold" }}>📷 木の写真を撮りましょう</p>
         {photo
           ? <div style={{ position:"relative", marginBottom:12 }}>
-              <img src={photo} alt="" style={{ width:"100%", maxHeight:240, objectFit:"cover", borderRadius:10, display:"block" }} />
+              <img src={photo} alt="" style={{ width:"100%", maxHeight:260, objectFit:"cover", borderRadius:10, display:"block" }} />
               <button onClick={() => fileRef.current.click()} style={{ position:"absolute", bottom:8, right:8, background:"rgba(0,0,0,0.6)", border:"1px solid #fff", borderRadius:8, color:"#fff", fontSize:12, padding:"5px 10px", cursor:"pointer", fontFamily:"inherit" }}>📷 撮り直す</button>
             </div>
           : <button onClick={() => fileRef.current.click()} style={{ width:"100%", padding:"40px 20px", background:"rgba(45,106,79,0.05)", border:"2px dashed rgba(45,106,79,0.3)", borderRadius:12, color:"#5a8c6a", fontSize:15, cursor:"pointer", fontFamily:"inherit", textAlign:"center", marginBottom:12, display:"block" }}>
@@ -1360,76 +1387,71 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
             </button>
         }
       </div>
-      {photo && <button style={PRI} onClick={next}>次へ → 基本情報</button>}
+      {photo && <button style={PRI} onClick={next}>次へ → 樹高を測定する</button>}
       <button style={GHO} onClick={next}>スキップ（写真なしで続ける）</button>
-    </div>
-  );
-
-  // STEP 1: 基本情報
-  if (step === 1) return (
-    <div>
-      {hdr("基本情報")}
-      {stepBar}
-      <div style={CARD}>
-        <span style={LBL}>木の名前（必須）：</span>
-        <input style={{ ...INP, marginBottom:12, fontSize:16 }} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="例: 住吉公園のせんだん" />
-        <span style={LBL}>樹種：</span>
-        <select value={species} onChange={e => setSpecies(e.target.value)} style={{ ...INP, marginBottom:12, fontSize:14, appearance:"none" }}>
-          <option value="">選択してください</option>
-          {TREE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <span style={LBL}>場所・区画：</span>
-        <input style={{ ...INP, marginBottom:12, fontSize:16 }} type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="例: 大阪府・住吉公園" />
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom: gps ? 6 : 8 }}>
-          <span style={{ ...LBL, marginBottom:0, flex:1 }}>📍 位置情報：</span>
-          <button onClick={getGPSNow} style={{ fontSize:12, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:6, padding:"5px 12px", cursor:"pointer", fontFamily:"inherit" }}>
-            {gpsLoading ? "取得中..." : gps ? "📍 再取得" : "📍 現在地を取得"}
-          </button>
-        </div>
-        {gps && <div style={{ background:"rgba(45,106,79,0.06)", borderRadius:8, padding:"6px 12px", marginBottom:8, display:"flex", justifyContent:"space-between" }}>
-          <span style={{ fontSize:11, color:"#2d6a4f" }}>✅ {gps.lat}, {gps.lng}</span>
-          <button onClick={() => setGps(null)} style={{ fontSize:11, color:"#ff8080", background:"none", border:"none", cursor:"pointer" }}>✕</button>
-        </div>}
-        <span style={LBL}>メモ：</span>
-        <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="樹形の特徴、感想など..." style={{ ...INP, resize:"vertical", minHeight:64, fontSize:14 }} />
-      </div>
-      <button style={PRI} onClick={() => { if (!name.trim()) { alert("木の名前を入力してください"); return; } next(); }}>次へ → 樹高を測定する</button>
       <button style={GHO} onClick={prev}>← 戻る</button>
     </div>
   );
 
-  // STEP 2: 樹高
+  // STEP 2: 樹高（同じ距離）
   if (step === 2) return (
     <div>
-      {hdr("樹高を測定")}
+      {hdr("樹高を測定", "📐 同じ場所から木全体をタップして測定します")}
       {stepBar}
       <WizardMeasHeight prof={prof} onMeasured={(h, dist) => { setHeight(h); setMeasDist(dist); next(); }} onSkip={next} />
     </div>
   );
 
-  // STEP 3: 枝張り
+  // STEP 3: 枝張り（距離引き継ぎ）
   if (step === 3) return (
     <div>
-      {hdr("枝張りを測定")}
+      {hdr("枝張りを測定", "🌿 同じ場所から枝の左端・右端をタップします")}
       {stepBar}
       <WizardMeasSpread prof={prof} initialDist={measDist} onMeasured={s => { setSpread(s); next(); }} onSkip={next} />
     </div>
   );
 
-  // STEP 4: 幹周り
+  // STEP 4: 基本情報（落ち着いて入力）
   if (step === 4) return (
     <div>
-      {hdr("幹周りを測定")}
+      {hdr("基本情報を入力", "📝 木の名前・樹種・場所などを入力します")}
       {stepBar}
-      <WizardMeasTrunk prof={prof} onMeasured={circ => {
-        setTrunk(circ);
-        if (species) { setAge(estimateAge(parseFloat(circ), species)+""); setAgeAuto(true); }
-        next();
-      }} onSkip={next} />
+      <div style={CARD}>
+        <span style={LBL}>木の名前（必須）：</span>
+        <input style={{ ...INP, marginBottom:12, fontSize:16 }} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="例: 住吉公園のせんだん" />
+        <span style={LBL}>樹種：</span>
+        <select value={species} onChange={e => {
+          const s = e.target.value; setSpecies(s);
+          // 樹種が選ばれたタイミングで推定樹齢を計算
+          if (s && trunk) { setAge(estimateAge(parseFloat(trunk), s)+""); setAgeAuto(true); }
+        }} style={{ ...INP, marginBottom:12, fontSize:14, appearance:"none" }}>
+          <option value="">選択してください</option>
+          {TREE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        {trunk && species && age && <div style={{ background:"rgba(168,213,181,0.15)", border:"1px solid rgba(168,213,181,0.3)", borderRadius:8, padding:"7px 12px", marginBottom:12 }}>
+          <p style={{ fontSize:12, color:"#5a9070", margin:0 }}>🤖 推定樹齢：<strong style={{ color:"#a8d5b5" }}>{age}年</strong>（幹周り{trunk}cmから自動計算）</p>
+        </div>}
+        <span style={LBL}>場所・区画：</span>
+        <input style={{ ...INP, marginBottom:12, fontSize:16 }} type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="例: 大阪府・住吉公園" />
+        <span style={LBL}>メモ：</span>
+        <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="樹形の特徴、感想など..." style={{ ...INP, resize:"vertical", minHeight:64, fontSize:14 }} />
+        {/* GPS確認 */}
+        {gps
+          ? <div style={{ background:"rgba(45,106,79,0.06)", borderRadius:8, padding:"7px 12px", marginTop:8, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ fontSize:11, color:"#2d6a4f" }}>📍 GPS取得済：{gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}</span>
+              <button onClick={() => setGps(null)} style={{ fontSize:11, color:"#ff8080", background:"none", border:"none", cursor:"pointer" }}>✕</button>
+            </div>
+          : <button onClick={getGPSNow} style={{ marginTop:8, width:"100%", padding:"9px", background:"rgba(45,106,79,0.06)", border:"1px solid rgba(45,106,79,0.2)", borderRadius:8, color:"#2d6a4f", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+              {gpsLoading ? "取得中…" : "📍 位置情報を追加する（任意）"}
+            </button>
+        }
+      </div>
+      <button style={PRI} onClick={() => { if (!name.trim()) { alert("木の名前を入力してください"); return; } next(); }}>次へ → 確認・保存</button>
+      <button style={GHO} onClick={prev}>← 戻る</button>
     </div>
   );
 
-  // STEP 5: 確認・保存
+  // STEP 5: 確認・保存（→写真フォルダに自動保存）
   return (
     <div>
       {hdr("確認・保存")}
@@ -1459,6 +1481,9 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
         </div>
         {ageAuto && <p style={{ fontSize:11, color:GOLD, margin:"8px 0 0" }}>🤖 推定樹齢は幹周りと樹種から自動計算</p>}
       </div>
+      {photo && (trunk||height||spread) && <div style={{ background:"rgba(45,106,79,0.06)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
+        <p style={{ fontSize:12, color:"#2d6a4f", margin:0 }}>📸 登録後に記録画像が写真フォルダに自動保存されます</p>
+      </div>}
       <button style={{ ...PRI, background:"#1a3a2a", borderColor:GRN, color:GRN }} onClick={handleSave}>
         🌳　この木を登録する
       </button>
