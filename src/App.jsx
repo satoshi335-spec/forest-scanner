@@ -1297,6 +1297,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
   const [age, setAge] = useState(null);
   const [ageAuto, setAgeAuto] = useState(false);
   const [measDist, setMeasDist] = useState(""); // 樹高→枝張り距離引き継ぎ
+  const [trunkSteps, setTrunkSteps] = useState(""); // 幹周り測定までの歩数
   const fileRef = useRef();
 
   const next = () => setStep(s => Math.min(s + 1, STEPS.length - 1));
@@ -1383,7 +1384,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
           <span style={{ fontSize:13, color:"#5a8c6a" }}>※ 幹周りから推定樹齢がわかります</span>
         </p>
       </div>
-      <WizardMeasTrunk prof={prof} onMeasured={circ => { setTrunk(circ); next(); }} onSkip={next} />
+      <WizardMeasTrunk prof={prof} onMeasured={(circ, steps) => { setTrunk(circ); if(steps) setTrunkSteps(steps); next(); }} onSkip={next} />
     </div>
   );
 
@@ -1415,7 +1416,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
     <div>
       {hdr("樹高を測定", "📐 同じ場所から木全体をタップして測定します")}
       {stepBar}
-      <WizardMeasHeight prof={prof} onMeasured={(h, dist) => { setHeight(h); setMeasDist(dist); next(); }} onSkip={next} />
+      <WizardMeasHeight prof={prof} trunkSteps={trunkSteps} onMeasured={(h, dist) => { setHeight(h); setMeasDist(dist); next(); }} onSkip={next} />
     </div>
   );
 
@@ -1510,19 +1511,33 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
 }
 
 // ── ウィザード用：樹高測定 ──
-function WizardMeasHeight({ prof, onMeasured, onSkip }) {
+function WizardMeasHeight({ prof, trunkSteps, onMeasured, onSkip }) {
+  // trunkSteps: 木の横→幹周り測定位置までの歩数
   const [top, setTop] = useState(null);
   const [bot, setBot] = useState(null);
   const [dist, setDist] = useState("");
-  const [walkCount, setWalkCount] = useState("");
+  const [walkFromTrunk, setWalkFromTrunk] = useState(""); // 幹周り測定位置→撮影位置
   const [bodyH, setBodyH] = useState(prof.bodyH||"");
   const [stride, setStride] = useState(prof.stride||null);
   const [eyeH, setEyeH] = useState(prof.eyeH||"1.5");
-  const [distMode, setDistMode] = useState(1);
   const [showCam, setShowCam] = useState(false);
   const dummyOrient = useCallback(() => {}, []);
   const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(dummyOrient);
   const canCalc = top!==null&&bot!==null&&!!dist&&!!eyeH;
+
+  // 歩幅を取得
+  const s = stride || (bodyH ? +(parseFloat(bodyH)*0.37/100).toFixed(3) : null);
+
+  // 木からの総距離を計算
+  const totalSteps = (parseInt(trunkSteps)||0) + (parseInt(walkFromTrunk)||0);
+  const totalDist = s && totalSteps ? +(totalSteps * s).toFixed(1) : null;
+
+  // walkFromTrunk変更時に dist を自動更新
+  const onWalkChange = (v) => {
+    setWalkFromTrunk(v);
+    const total = (parseInt(trunkSteps)||0) + (parseInt(v)||0);
+    if (s && total) setDist(+(total * s).toFixed(1)+"");
+  };
 
   const doCalc = () => {
     if (!canCalc) return;
@@ -1537,7 +1552,63 @@ function WizardMeasHeight({ prof, onMeasured, onSkip }) {
 
   if (!showCam) return (
     <>
-      <DistPanel bodyH={bodyH} setBodyH={setBodyH} eyeH={eyeH} setEyeH={setEyeH} dist={dist} setDist={setDist} distMode={distMode} setDistMode={setDistMode} stride={stride} setStride={setStride} walkCount={walkCount} setWalkCount={setWalkCount} showEyeH />
+      {/* 身長・歩幅設定 */}
+      <div style={CARD}>
+        <p style={{ fontSize:15, color:"#1a4a2a", marginBottom:12, fontWeight:"bold" }}>身長 <span style={{ fontSize:12, color:"#5a8c6a", fontWeight:"normal" }}>自動保存</span></p>
+        <span style={LBL}>身長（cm）：</span>
+        <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:8 }}>
+          <input style={INP} type="number" value={bodyH} onChange={e => { setBodyH(e.target.value); const h=parseFloat(e.target.value); if(h>0){const s=+(h*0.37/100).toFixed(3);setStride(s);saveProfile({...loadProfile(),bodyH:e.target.value,stride:s});}}} placeholder="例: 170" />
+          <span style={{ color:"#2d6a4f", minWidth:24 }}>cm</span>
+        </div>
+        <span style={LBL}>目の高さ（m）：</span>
+        <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:8 }}>
+          <input style={INP} type="number" value={eyeH} onChange={e => { setEyeH(e.target.value); saveProfile({...loadProfile(), eyeH:e.target.value}); }} placeholder="1.5" />
+          <span style={{ color:"#2d6a4f", minWidth:24 }}>m</span>
+        </div>
+        {s && <div style={{ background:"rgba(45,106,79,0.08)", borderRadius:8, padding:"8px 12px", fontSize:14, color:"#1a4a2a" }}>
+          歩幅：<strong>{Math.round(s*100)} cm</strong>（身長×0.37）
+        </div>}
+      </div>
+
+      {/* 歩数入力（積算方式） */}
+      <div style={CARD}>
+        <p style={{ fontSize:15, color:"#1a4a2a", marginBottom:14, fontWeight:"bold" }}>木までの距離</p>
+
+        {/* ① 木の横→幹周り測定位置 */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, padding:"10px 12px", background:"rgba(45,106,79,0.06)", borderRadius:10 }}>
+          <span style={{ fontSize:22 }}>🌲</span>
+          <div style={{ flex:1 }}>
+            <p style={{ fontSize:13, color:"#5a8c6a", margin:"0 0 2px" }}>木の横 → 幹周り測定位置</p>
+            <p style={{ fontSize:17, color:"#1a3a2a", fontWeight:"bold", margin:0 }}>
+              {trunkSteps ? `${trunkSteps} 歩` : "―"}
+              {s && trunkSteps ? <span style={{ fontSize:13, color:"#5a8c6a", marginLeft:8 }}>（{+(parseInt(trunkSteps)*s).toFixed(1)}m）</span> : null}
+            </p>
+          </div>
+          <span style={{ fontSize:12, color:"#5a8c6a" }}>✅ 記録済</span>
+        </div>
+
+        {/* ② 幹周り測定位置→撮影位置 */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, padding:"10px 12px", background:"rgba(45,106,79,0.06)", borderRadius:10 }}>
+          <span style={{ fontSize:22 }}>📷</span>
+          <div style={{ flex:1 }}>
+            <p style={{ fontSize:13, color:"#5a8c6a", margin:"0 0 6px" }}>幹周り測定位置 → ここ（撮影位置）</p>
+            <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+              <input style={{ ...INP, padding:"8px 12px" }} type="number" value={walkFromTrunk} onChange={e => onWalkChange(e.target.value)} placeholder="例: 20" />
+              <span style={{ color:"#2d6a4f", whiteSpace:"nowrap", fontSize:15 }}>歩</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ③ 木からの合計 */}
+        <div style={{ background:"rgba(45,106,79,0.12)", border:"2px solid rgba(45,106,79,0.3)", borderRadius:10, padding:"12px 14px" }}>
+          <p style={{ fontSize:13, color:"#5a8c6a", margin:"0 0 4px" }}>🌳 木からの合計距離</p>
+          <p style={{ fontSize:22, fontWeight:"bold", color:"#1a3a2a", margin:0 }}>
+            {totalSteps ? `${totalSteps} 歩` : "―"}
+            {totalDist ? <span style={{ fontSize:17, color:"#2d6a4f", marginLeft:10 }}>= 約 {totalDist} m</span> : null}
+          </p>
+        </div>
+      </div>
+
       <button style={PRI} onClick={() => setShowCam(true)} disabled={!dist}>次へ → カメラで測定する</button>
       <button style={GHO} onClick={onSkip}>スキップ（樹高なしで次へ）</button>
     </>
@@ -1547,7 +1618,7 @@ function WizardMeasHeight({ prof, onMeasured, onSkip }) {
     <>
       <HeightTapView videoRef={videoRef} cameraOn={cameraOn} startAll={startAll} sensorOn={sensorOn}
         top={top} bot={bot} onLockTop={setTop} onLockBot={setBot} onRedo={() => { setTop(null); setBot(null); }} />
-      <button onClick={doCalc} style={{ ...PRI, background:canCalc?"#2a4a1a":"#1a2a1a", borderColor:canCalc?GOLD:"#4a7c5a", color:canCalc?GOLD:"#4a7c5a", cursor:canCalc?"pointer":"not-allowed" }}>
+      <button onClick={doCalc} style={{ ...PRI, background:canCalc?"#1a5c3f":"#1a2a1a", cursor:canCalc?"pointer":"not-allowed" }}>
         📐　樹高を計算して次へ {!canCalc&&(top===null?"（梢をタップ）":bot===null?"（根元をタップ）":"")}
       </button>
       <button style={GHO} onClick={() => { stopCamera(); setShowCam(false); }}>← 距離入力に戻る</button>
@@ -1608,6 +1679,7 @@ function WizardMeasSpread({ prof, initialDist, onMeasured, onSkip }) {
 
 // ── ウィザード用：幹周り測定 ──
 function WizardMeasTrunk({ prof, onMeasured, onSkip }) {
+  // onMeasured(circ, walkCount) で歩数も渡す
   const [left, setLeft] = useState(null);
   const [right, setRight] = useState(null);
   const [dist, setDist] = useState("");
