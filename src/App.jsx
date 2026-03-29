@@ -1391,16 +1391,30 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
   // STEP 2: 写真（15〜20歩離れて）
   if (step === 2) return (
     <div>
-      {hdr("写真を撮影", "📷 15〜20歩ほど離れて木全体を撮影します")}
+      {hdr("写真を撮影", null)}
       {stepBar}
       <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={onPhoto} />
+
+      {/* 幹周りと同スタイルの説明カード */}
+      <div style={{ ...CARD, background:"rgba(45,106,79,0.06)", border:"2px solid rgba(45,106,79,0.3)" }}>
+        <p style={{ fontSize:17, color:"#1a3a2a", fontWeight:"bold", margin:"0 0 10px" }}>📷 15〜20歩歩いてください</p>
+        <p style={{ fontSize:15, color:"#2d6a4f", margin:"0 0 10px", lineHeight:1.8 }}>
+          木全体がカメラに収まる距離まで<br/>離れて撮影します
+        </p>
+        {/* 歩数を覚えておくよう促す */}
+        <div style={{ background:"rgba(45,106,79,0.1)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:10, padding:"10px 14px" }}>
+          <p style={{ fontSize:15, color:"#1a3a2a", fontWeight:"bold", margin:"0 0 4px" }}>👣 歩いた歩数を覚えておいてください</p>
+          <p style={{ fontSize:13, color:"#2d6a4f", margin:0 }}>次の樹高・枝張り測定時に距離の計算に使います</p>
+        </div>
+      </div>
+
       <div style={CARD}>
         {photo
           ? <div style={{ position:"relative", marginBottom:12 }}>
               <img src={photo} alt="" style={{ width:"100%", maxHeight:260, objectFit:"cover", borderRadius:10, display:"block" }} />
               <button onClick={() => fileRef.current.click()} style={{ position:"absolute", bottom:8, right:8, background:"rgba(0,0,0,0.6)", border:"1px solid #fff", borderRadius:8, color:"#fff", fontSize:12, padding:"5px 10px", cursor:"pointer", fontFamily:"inherit" }}>📷 撮り直す</button>
             </div>
-          : <button onClick={() => fileRef.current.click()} style={{ width:"100%", padding:"40px 20px", background:"rgba(45,106,79,0.05)", border:"2px dashed rgba(45,106,79,0.3)", borderRadius:12, color:"#5a8c6a", fontSize:15, cursor:"pointer", fontFamily:"inherit", textAlign:"center", marginBottom:12, display:"block" }}>
+          : <button onClick={() => fileRef.current.click()} style={{ width:"100%", padding:"36px 20px", background:"rgba(45,106,79,0.04)", border:"2px dashed rgba(45,106,79,0.3)", borderRadius:12, color:"#2d6a4f", fontSize:16, cursor:"pointer", fontFamily:"inherit", textAlign:"center", display:"block", fontWeight:"bold" }}>
               📷　写真を撮影 / ライブラリから選択
             </button>
         }
