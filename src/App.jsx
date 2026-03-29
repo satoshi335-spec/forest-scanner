@@ -509,7 +509,15 @@ async function printPDF(targets) {
           <p class="date">登録：${t.createdAt}</p>
         </div>
       </div>`;
-  }).join("");
+  });
+
+  // 2本ずつページにまとめる
+  const pages = [];
+  for (let i = 0; i < cards.length; i += 2) {
+    const group = cards.slice(i, i + 2).join("");
+    pages.push(`<div class="page">${group}</div>`);
+  }
+  const pagedCards = pages.join("");
 
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"/>
   <title>大きな木 測定レポート</title>
@@ -519,27 +527,29 @@ async function printPDF(targets) {
     header { display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #2d6a4f; padding-bottom: 10px; margin-bottom: 6px; }
     header h1 { font-size: 20px; color: #2d6a4f; }
     .meta { font-size: 11px; color: #888; margin-bottom: 16px; }
-    /* 2列グリッド */
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .card { border: 1px solid #cde8d8; border-radius: 12px; overflow: hidden; page-break-inside: avoid; display: flex; flex-direction: column; }
-    /* 写真エリア：3:4縦長比率 */
-    .photo-wrap { width: 100%; aspect-ratio: 3/4; overflow: hidden; background: #f0f7f0; flex-shrink: 0; }
+    /* 1ページ2本・横レイアウト */
+    .grid { display: block; }
+    .page { display: flex; flex-direction: column; gap: 16px; height: 96vh; page-break-after: always; box-sizing: border-box; padding: 4px 0; }
+    .page:last-child { page-break-after: auto; }
+    .card { border: 1px solid #cde8d8; border-radius: 12px; overflow: hidden; display: flex; flex-direction: row; flex: 1; min-height: 0; }
+    /* 写真エリア：左側・縦長 */
+    .photo-wrap { width: 42%; flex-shrink: 0; overflow: hidden; background: #f0f7f0; }
     .photo { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
     .no-photo { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 52px; }
-    .card-body { padding: 10px 12px 12px; flex: 1; display: flex; flex-direction: column; gap: 5px; }
-    .card-body h2 { font-size: 14px; color: #1a3a2a; font-weight: bold; }
-    .tags { display: flex; gap: 5px; flex-wrap: wrap; }
-    .tag { font-size: 9px; border-radius: 20px; padding: 2px 7px; }
+    .card-body { padding: 16px 18px; flex: 1; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+    .card-body h2 { font-size: 18px; color: #1a3a2a; font-weight: bold; }
+    .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag { font-size: 11px; border-radius: 20px; padding: 3px 10px; }
     .tag.green { background: #e8f5ee; color: #2d6a4f; border: 1px solid #b0d8c0; }
     .tag.blue  { background: #e8f0f8; color: #2a4a6a; border: 1px solid #b0c8e0; }
-    .gps { font-size: 9px; color: #2d6a4f; }
-    .note { font-size: 10px; color: #555; line-height: 1.5; }
-    .meas-grid { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
-    .meas-item { background: #f0f7f0; border-radius: 6px; padding: 4px 6px; text-align: center; flex: 1; min-width: 44px; }
-    .ml { font-size: 8px; color: #666; display: block; margin-bottom: 1px; }
-    .mv { font-size: 15px; font-weight: bold; color: #2d6a4f; }
-    .mv small { font-size: 9px; font-weight: normal; color: #888; margin-left: 1px; }
-    .date { font-size: 9px; color: #aaa; margin-top: auto; padding-top: 4px; }
+    .gps { font-size: 11px; color: #2d6a4f; }
+    .note { font-size: 12px; color: #555; line-height: 1.6; }
+    .meas-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .meas-item { background: #f0f7f0; border-radius: 8px; padding: 6px 10px; text-align: center; flex: 1; min-width: 52px; }
+    .ml { font-size: 10px; color: #666; display: block; margin-bottom: 2px; }
+    .mv { font-size: 20px; font-weight: bold; color: #2d6a4f; }
+    .mv small { font-size: 11px; font-weight: normal; color: #888; margin-left: 2px; }
+    .date { font-size: 11px; color: #aaa; margin-top: auto; padding-top: 6px; }
     @media print {
       body { padding: 8px; }
       .grid { gap: 10px; }
@@ -547,7 +557,7 @@ async function printPDF(targets) {
   </style></head><body>
   <header><span style="font-size:24px;">🌳</span><h1>大きな木 測定レポート</h1></header>
   <p class="meta">出力日：${today()}　登録本数：${targets.length}本</p>
-  <div class="grid">${cards}</div>
+  <div class="grid">${pagedCards}</div>
   <p style="font-size:10px; color:#888; margin-top:28px; border-top:1px solid #e0e0e0; padding-top:12px; line-height:1.8;">
     ※ 推定樹齢は幹周り÷樹種別年間成長量による参考値です。実際の樹齢は立地・気候・管理条件により大きく異なります。<br>
     ※ 参考：国土技術政策総合研究所「公園樹木管理の高度化に関する研究」・日本緑化センター資料に基づく概算値。<br>
