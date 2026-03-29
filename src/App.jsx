@@ -129,12 +129,12 @@ function getGPS() {
 const GRN = "#7ecba1", GOLD = "#ffd166", BLUE = "#74b3ce";
 const BG = { minHeight: "100vh", background: "linear-gradient(160deg,#e8f5e9 0%,#f1f8e9 40%,#e0f2f1 100%)", fontFamily: "'Georgia','Hiragino Mincho ProN',serif", color: "#1a3a2a" };
 const INNER = { maxWidth: 440, margin: "0 auto", padding: "0 16px 48px" };
-const CARD = { background: "rgba(255,255,255,0.85)", border: "1px solid rgba(45,106,79,0.15)", borderRadius: 14, padding: "16px", marginBottom: 12, boxShadow: "0 2px 12px rgba(45,106,79,0.08)" };
-const INP = { width: "100%", boxSizing: "border-box", background: "#ffffff", border: "1.5px solid rgba(45,106,79,0.25)", borderRadius: 10, padding: "12px 14px", color: "#1a3a2a", fontSize: 18, outline: "none", fontFamily: "inherit", boxShadow: "inset 0 1px 4px rgba(0,0,0,0.05)" };
-const LBL = { fontSize: 12, color: "#4a7c5a", marginBottom: 5, display: "block", fontWeight: "bold" };
-const PRI = { width: "100%", padding: "14px", background: "linear-gradient(135deg,#2d6a4f,#40916c)", border: "none", borderRadius: 12, color: "#ffffff", fontSize: 15, cursor: "pointer", marginBottom: 8, fontFamily: "inherit", letterSpacing: 1, boxShadow: "0 3px 10px rgba(45,106,79,0.3)" };
-const GHO = { width: "100%", padding: "11px", background: "rgba(255,255,255,0.8)", border: "1.5px solid rgba(45,106,79,0.3)", borderRadius: 12, color: "#2d6a4f", fontSize: 13, cursor: "pointer", marginBottom: 8, fontFamily: "inherit" };
-const TAB = (on) => ({ flex: 1, padding: "9px 6px", borderRadius: 8, cursor: "pointer", fontSize: 12, background: on ? "#2d6a4f" : "rgba(255,255,255,0.8)", border: `1.5px solid ${on ? "#2d6a4f" : "rgba(45,106,79,0.2)"}`, color: on ? "#ffffff" : "#4a7c5a", fontFamily: "inherit", fontWeight: on ? "bold" : "normal" });
+const CARD = { background: "rgba(255,255,255,0.97)", border: "1.5px solid rgba(45,106,79,0.2)", borderRadius: 14, padding: "16px", marginBottom: 12, boxShadow: "0 2px 16px rgba(45,106,79,0.12)" };
+const INP = { width: "100%", boxSizing: "border-box", background: "#ffffff", border: "2px solid rgba(45,106,79,0.35)", borderRadius: 10, padding: "13px 14px", color: "#0a1f0f", fontSize: 18, outline: "none", fontFamily: "inherit", boxShadow: "inset 0 1px 4px rgba(0,0,0,0.06)" };
+const LBL = { fontSize: 14, color: "#1a4a2a", marginBottom: 6, display: "block", fontWeight: "bold" };
+const PRI = { width: "100%", padding: "16px", background: "linear-gradient(135deg,#1a5c3f,#2d7a55)", border: "none", borderRadius: 12, color: "#ffffff", fontSize: 17, cursor: "pointer", marginBottom: 10, fontFamily: "inherit", letterSpacing: 1, boxShadow: "0 4px 14px rgba(45,106,79,0.4)", fontWeight: "bold" };
+const GHO = { width: "100%", padding: "13px", background: "rgba(255,255,255,0.97)", border: "2px solid rgba(45,106,79,0.4)", borderRadius: 12, color: "#1a4a2a", fontSize: 15, cursor: "pointer", marginBottom: 10, fontFamily: "inherit", fontWeight: "bold" };
+const TAB = (on) => ({ flex: 1, padding: "11px 6px", borderRadius: 8, cursor: "pointer", fontSize: 14, background: on ? "#1a5c3f" : "rgba(255,255,255,0.97)", border: `2px solid ${on ? "#1a5c3f" : "rgba(45,106,79,0.3)"}`, color: on ? "#ffffff" : "#1a4a2a", fontFamily: "inherit", fontWeight: "bold" });
 const SML = (c) => ({ fontSize: 11, color: c, background: "rgba(255,255,255,0.9)", border: `1.5px solid ${c}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit", marginTop: 6 });
 
 // 樹種別年間成長量（幹周りcm/年）
@@ -244,7 +244,7 @@ function DistPanel({ bodyH, setBodyH, eyeH, setEyeH, dist, setDist, distMode, se
   return (
     <>
       <div style={CARD}>
-        <p style={{ fontSize: 13, color: GRN, marginBottom: 12 }}>身長{showEyeH ? "・目の高さ" : ""} <span style={{ fontSize: 10, color: "#4a9070" }}>自動保存</span></p>
+        <p style={{ fontSize: 15, color: "#1a4a2a", marginBottom: 12, fontWeight:"bold" }}>身長{showEyeH ? "・目の高さ" : ""} <span style={{ fontSize: 10, color: "#4a9070" }}>自動保存</span></p>
         <span style={LBL}>身長（cm）：</span>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
           <input style={INP} type="number" value={bodyH} onChange={e => onBodyH(e.target.value)} placeholder="例: 170" />
@@ -296,7 +296,7 @@ function DistPanel({ bodyH, setBodyH, eyeH, setEyeH, dist, setDist, distMode, se
       </div>
 
       <div style={CARD}>
-        <p style={{ fontSize: 13, color: GRN, marginBottom: 12 }}>木までの距離</p>
+        <p style={{ fontSize: 15, color: "#1a4a2a", marginBottom: 12, fontWeight:"bold" }}>木までの距離</p>
         <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
           <button style={TAB(distMode===0)} onClick={() => setDistMode(0)}>📏 直接入力（m）</button>
           <button style={TAB(distMode===1)} onClick={() => setDistMode(1)}>👣 歩数で入力</button>
