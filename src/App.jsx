@@ -2266,22 +2266,29 @@ async function saveTreeImage(tree) {
   };
   const sizes = chars.map((_, i) => Math.round(BASE - VARIANCE/2 + rng(i) * VARIANCE));
 
-  // 左縦書き（上から下へ・掛け軸スタイル）
+  // 左縦書き（下から上へ・左下スタイル）
   ctx.shadowColor = "rgba(0,0,0,0.75)";
   ctx.shadowBlur = 10;
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(255,255,255,0.82)";
 
-  // 上から順に描く・左端から少し内側
+  // 全文字の合計高さを先に計算
   const leftX = 48;
-  let curY = 100; // 上から開始
+  const totalH = chars.reduce((sum, _, i) => sum + sizes[i] + 6, 0);
+
+  // 記録日の上から開始（下から積み上げ）
+  const bottomAnchor = H - 90; // 「記録日」の上
+  let startY = bottomAnchor - totalH;
+  // 最低でも画面上端から80px以上下から始まるよう調整
+  if (startY < 80) startY = 80;
+
+  let curY = startY;
   chars.forEach((ch, i) => {
     const s = sizes[i];
     ctx.font = `${s}px ${FONT}`;
     ctx.fillText(ch, leftX, curY);
     curY += s + 6;
-    // 画面下端を超えそうなら止める
-    if (curY > H - 120) return;
+    if (curY > bottomAnchor) return;
   });
 
   // 記録日・アプリ名（最下部）
