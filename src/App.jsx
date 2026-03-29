@@ -259,7 +259,7 @@ function DistPanel({ bodyH, setBodyH, eyeH, setEyeH, dist, setDist, distMode, se
         </>}
         {bodyH && <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
           <button onClick={autoFill} style={{ fontSize: 11, color: GRN, background: "rgba(126,203,161,0.1)", border: "1px solid rgba(126,203,161,0.3)", borderRadius: 6, padding: "5px 12px", cursor: "pointer", fontFamily: "inherit" }}>身長から自動入力</button>
-          {msg && <span style={{ fontSize: 11, color: GOLD }}>✅ 保存</span>}
+          {msg && <span style={{ fontSize: 11, color: GRN }}>✅ 保存</span>}
         </div>}
 
         {/* 歩幅設定 */}
@@ -284,7 +284,7 @@ function DistPanel({ bodyH, setBodyH, eyeH, setEyeH, dist, setDist, distMode, se
               <input style={INP} type="number" value={manualStrideCm} onChange={e => onManualStride(e.target.value)} placeholder="例: 60" />
               <span style={{ color: GRN, minWidth: 24 }}>cm</span>
             </div>
-            <div style={{ background: "rgba(255,209,102,0.08)", border: "1px solid rgba(255,209,102,0.2)", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: GOLD, lineHeight: 1.7 }}>
+            <div style={{ background: "rgba(255,209,102,0.08)", border: "1px solid rgba(255,209,102,0.2)", borderRadius: 8, padding: "8px 12px", fontSize: 11, color: GRN, lineHeight: 1.7 }}>
               💡 測り方：10歩歩いた距離（cm）÷ 10<br/>
               例：600cm ÷ 10 = <strong>60cm</strong>
             </div>
@@ -731,7 +731,7 @@ function HeightApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
                 🌿　続けて枝張りを測定する
               </button>}
             </>
-          : <button style={{ ...PRI, background:"#2a4a1a", borderColor:GOLD, color:GOLD }} onClick={() => setShowSave(true)}>💾　アルバムに保存する</button>
+          : <button style={{ ...PRI, background:"#2a4a1a", borderColor:GRN, color:GRN }} onClick={() => setShowSave(true)}>💾　アルバムに保存する</button>
         }
         <button style={PRI} onClick={reset}>📐　もう一度測定する</button>
         <button style={GHO} onClick={onBack}>← メニューに戻る</button>
@@ -859,7 +859,7 @@ function SpreadApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
           ? <button style={{ ...PRI, background:"#1a3a2a", borderColor:GRN, color:GRN }} onClick={() => onSaveTree(null, pendingTreeId, { spread: result.spread+"" })}>
               💾　{pendingTreeName||"この木"}に保存する
             </button>
-          : <button style={{ ...PRI, background:"#2a4a1a", borderColor:GOLD, color:GOLD }} onClick={() => setShowSave(true)}>💾　アルバムに保存する</button>
+          : <button style={{ ...PRI, background:"#2a4a1a", borderColor:GRN, color:GRN }} onClick={() => setShowSave(true)}>💾　アルバムに保存する</button>
         }
         <button style={PRI} onClick={reset}>🌿　もう一度測定する</button>
         <button style={GHO} onClick={onBack}>← メニューに戻る</button>
@@ -963,7 +963,7 @@ function HeightTapView({ videoRef, cameraOn, startAll, sensorOn, top, bot, onLoc
           {/* 梢ライン（横・GOLD） */}
           {topPx !== null && <div style={{ position:"absolute", top:topPx, left:0, right:0, height:isDraggingTop?5:3, background:GOLD, opacity:isDraggingTop?1:0.95, transform:"translateY(-50%)", pointerEvents:"none", boxShadow:`0 0 ${isDraggingTop?18:10}px ${GOLD}`, transition:"height 0.1s" }}>
             <div style={{ position:"absolute", left:"50%", top:"50%", transform:"translate(-50%,-50%)", width:28, height:28, borderRadius:"50%", background:GOLD, border:"3px solid #fff", boxShadow:"0 2px 8px rgba(0,0,0,0.4)" }} />
-            <span style={{ position:"absolute", right:10, top:6, fontSize:11, color:GOLD, background:"rgba(0,0,0,0.75)", padding:"2px 8px", borderRadius:4, whiteSpace:"nowrap", fontWeight:"bold" }}>✅ 梢</span>
+            <span style={{ position:"absolute", right:10, top:6, fontSize:11, color:GRN, background:"rgba(0,0,0,0.75)", padding:"2px 8px", borderRadius:4, whiteSpace:"nowrap", fontWeight:"bold" }}>✅ 梢</span>
           </div>}
           {/* 根元ライン（横・BLUE） */}
           {botPx !== null && <div style={{ position:"absolute", top:botPx, left:0, right:0, height:isDraggingBot?5:3, background:BLUE, opacity:isDraggingBot?1:0.95, transform:"translateY(-50%)", pointerEvents:"none", boxShadow:`0 0 ${isDraggingBot?18:10}px ${BLUE}`, transition:"height 0.1s" }}>
@@ -1098,7 +1098,7 @@ function TrunkTapView({ videoRef, cameraOn, startAll, sensorOn, left, right, onL
           {/* 右端ライン（ドラッグハンドル付き） */}
           {rightPx !== null && <div style={{ position:"absolute", left:rightPx, top:0, bottom:0, width:isDraggingRight?6:4, background:GOLD, opacity:isDraggingRight?1:0.95, transform:"translateX(-50%)", pointerEvents:"none", boxShadow:`0 0 ${isDraggingRight?20:12}px ${GOLD}`, transition:"width 0.1s, box-shadow 0.1s" }}>
             <div style={{ position:"absolute", top:"50%", left:"50%", transform:"translate(-50%,-50%)", width:28, height:28, borderRadius:"50%", background:GOLD, border:"3px solid #fff", boxShadow:`0 2px 8px rgba(0,0,0,0.4)` }} />
-            <span style={{ position:"absolute", top:36, left:10, fontSize:11, color:GOLD, background:"rgba(0,0,0,0.75)", padding:"2px 8px", borderRadius:4, whiteSpace:"nowrap", fontWeight:"bold" }}>← 右端 →</span>
+            <span style={{ position:"absolute", top:36, left:10, fontSize:11, color:GRN, background:"rgba(0,0,0,0.75)", padding:"2px 8px", borderRadius:4, whiteSpace:"nowrap", fontWeight:"bold" }}>← 右端 →</span>
           </div>}
           {/* 帯 */}
           {leftPx !== null && rightPx !== null && <div style={{ position:"absolute", top:0, bottom:0, left:Math.min(leftPx, rightPx), width:Math.abs(rightPx-leftPx), background:"rgba(126,203,161,0.15)", pointerEvents:"none" }} />}
@@ -1201,8 +1201,8 @@ function TrunkApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTreeN
       </div>}
       {pg===1&&<div>
         <DistPanel bodyH={bodyH} setBodyH={setBodyH} eyeH="" setEyeH={() => {}} dist={dist} setDist={setDist} distMode={distMode} setDistMode={setDistMode} stride={stride} setStride={setStride} walkCount={walkCount} setWalkCount={setWalkCount} showEyeH={false} />
-        <div style={{ background:"rgba(255,209,102,0.08)", border:"1px solid rgba(255,209,102,0.2)", borderRadius:10, padding:"10px 14px", marginBottom:10 }}>
-          <p style={{ fontSize:12, color:GOLD, margin:0 }}>💡 幹周り測定は距離 <strong>2〜5m</strong> がおすすめです</p>
+        <div style={{ background:"rgba(45,106,79,0.08)", border:"1.5px solid rgba(45,106,79,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:10 }}>
+          <p style={{ fontSize:12, color:GRN, margin:0 }}>💡 幹周り測定は距離 <strong>2〜5m</strong> がおすすめです</p>
         </div>
         <button style={PRI} onClick={() => setPg(2)}>次へ → 角度を測定する</button>
         <button style={GHO} onClick={() => setPg(0)}>← 戻る</button>
@@ -1252,14 +1252,14 @@ function TrunkApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTreeN
             </div>
           ))}
         </div>
-        <div style={{ background:"rgba(255,193,7,0.07)", border:"1px solid rgba(255,193,7,0.2)", borderRadius:12, padding:"10px 14px", marginBottom:12 }}>
-          <p style={{ fontSize:11, color:"#ffc107", margin:0, lineHeight:1.7 }}>⚠️ 地上1.3mの高さで測定すると標準的な幹周りになります。</p>
+        <div style={{ background:"rgba(45,106,79,0.06)", border:"1px solid rgba(255,193,7,0.2)", borderRadius:12, padding:"10px 14px", marginBottom:12 }}>
+          <p style={{ fontSize:11, color:"#2d6a4f", margin:0, lineHeight:1.7 }}>⚠️ 地上1.3mの高さで測定すると標準的な幹周りになります。</p>
         </div>
         {pendingTreeId
           ? <button style={{ ...PRI, background:"#1a3a2a", borderColor:GRN, color:GRN }} onClick={() => onSaveTree(null, pendingTreeId, { trunk: result.circ+"" })}>
               💾　{pendingTreeName||"この木"}に保存する
             </button>
-          : <button style={{ ...PRI, background:"#2a4a1a", borderColor:GOLD, color:GOLD }} onClick={() => setShowSave(true)}>💾　アルバムに保存する</button>
+          : <button style={{ ...PRI, background:"#2a4a1a", borderColor:GRN, color:GRN }} onClick={() => setShowSave(true)}>💾　アルバムに保存する</button>
         }
         <button style={PRI} onClick={reset}>🌲　もう一度測定する</button>
         <button style={GHO} onClick={onBack}>← メニューに戻る</button>
@@ -1282,7 +1282,7 @@ function TrunkApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTreeN
 // ================================================================
 function RegisterWizard({ prof, trees, onComplete, onBack }) {
   // 新しい順番：幹周り(+GPS) → 写真 → 樹高 → 枝張り → 基本情報 → 確認
-  const STEPS = ["🌲 幹周り", "📷 写真", "📐 樹高", "🌿 枝張り", "📝 基本情報", "✅ 確認"];
+  const STEPS = ["📍 GPS取得", "🌲 幹周り", "📷 写真", "📐 樹高", "🌿 枝張り", "📝 基本情報", "✅ 確認"];
   const [step, setStep] = useState(0);
   const [photo, setPhoto] = useState(null);
   const [name, setName] = useState("");
@@ -1316,7 +1316,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) { alert("木の名前を入力してください"); setStep(4); return; }
+    if (!name.trim()) { alert("木の名前を入力してください"); setStep(5); return; }
     const t = {
       id: newId(), name: name.trim(), species, location, note, photo, gps,
       measurements: { height: height||"", spread: spread||"", trunk: trunk||"", age: age||"" },
@@ -1348,30 +1348,47 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
     </div>
   );
 
-  // STEP 0: 幹周り（+ GPS自動取得）
+  // STEP 0: GPS取得
   if (step === 0) return (
     <div>
-      {hdr("幹周りを測定", "🌲 木の真横（3〜5歩）に立って測定します")}
+      {hdr("位置情報を取得", null)}
       {stepBar}
-      {/* GPS自動取得ボタン */}
-      <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.2)", borderRadius:12, padding:"12px 14px", marginBottom:12, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        <div>
-          <p style={{ fontSize:13, color:"#2d6a4f", margin:"0 0 2px", fontWeight:"bold" }}>📍 位置情報を取得</p>
-          <p style={{ fontSize:11, color:"#5a9070", margin:0 }}>木の真横が一番正確です</p>
-        </div>
-        <button onClick={getGPSNow} style={{ padding:"8px 14px", background: gps ? "#1a3a2a" : "rgba(45,106,79,0.15)", border:"1px solid rgba(45,106,79,0.4)", borderRadius:8, color: gps ? GRN : "#2d6a4f", fontSize:12, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>
-          {gpsLoading ? "取得中…" : gps ? "✅ 取得済" : "📍 取得する"}
+      <div style={{ ...CARD, textAlign:"center", padding:"28px 20px" }}>
+        <p style={{ fontSize:48, margin:"0 0 12px" }}>📍</p>
+        <p style={{ fontSize:17, color:"#1a3a2a", fontWeight:"bold", margin:"0 0 8px" }}>まず木の横に立ってください</p>
+        <p style={{ fontSize:14, color:"#2d6a4f", margin:"0 0 20px", lineHeight:1.7 }}>
+          ここで取得した位置情報が<br/>地図に表示されます
+        </p>
+        <button onClick={getGPSNow} style={{ ...PRI, marginBottom:0 }}>
+          {gpsLoading ? "📍 取得中…" : gps ? "✅ GPS取得済（再取得）" : "📍 現在地を取得する"}
         </button>
+        {gps && <div style={{ background:"rgba(45,106,79,0.08)", borderRadius:10, padding:"10px 14px", marginTop:12 }}>
+          <p style={{ fontSize:13, color:"#2d6a4f", margin:0 }}>✅ {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}</p>
+        </div>}
       </div>
-      <WizardMeasTrunk prof={prof} onMeasured={circ => {
-        setTrunk(circ);
-        next();
-      }} onSkip={next} />
+      <button style={PRI} onClick={next}>{gps ? "次へ → 幹周りを測定する" : "次へ（スキップ）"}</button>
+      <button style={GHO} onClick={onBack}>← 戻る</button>
     </div>
   );
 
-  // STEP 1: 写真（15〜20歩離れて）
+  // STEP 1: 幹周り
   if (step === 1) return (
+    <div>
+      {hdr("幹周りを測定", null)}
+      {stepBar}
+      <div style={{ ...CARD, background:"rgba(45,106,79,0.06)", border:"2px solid rgba(45,106,79,0.3)" }}>
+        <p style={{ fontSize:17, color:"#1a3a2a", fontWeight:"bold", margin:"0 0 10px" }}>🌲 3〜5歩歩いてください</p>
+        <p style={{ fontSize:15, color:"#2d6a4f", margin:0, lineHeight:1.8 }}>
+          木の幹から3〜5歩離れた場所で<br/>幹周りを測定します<br/>
+          <span style={{ fontSize:13, color:"#5a8c6a" }}>※ 幹周りから推定樹齢がわかります</span>
+        </p>
+      </div>
+      <WizardMeasTrunk prof={prof} onMeasured={circ => { setTrunk(circ); next(); }} onSkip={next} />
+    </div>
+  );
+
+  // STEP 2: 写真（15〜20歩離れて）
+  if (step === 2) return (
     <div>
       {hdr("写真を撮影", "📷 15〜20歩ほど離れて木全体を撮影します")}
       {stepBar}
@@ -1393,8 +1410,8 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
     </div>
   );
 
-  // STEP 2: 樹高（同じ距離）
-  if (step === 2) return (
+  // STEP 3: 樹高（同じ距離）
+  if (step === 3) return (
     <div>
       {hdr("樹高を測定", "📐 同じ場所から木全体をタップして測定します")}
       {stepBar}
@@ -1402,8 +1419,8 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
     </div>
   );
 
-  // STEP 3: 枝張り（距離引き継ぎ）
-  if (step === 3) return (
+  // STEP 4: 枝張り（距離引き継ぎ）
+  if (step === 4) return (
     <div>
       {hdr("枝張りを測定", "🌿 同じ場所から枝の左端・右端をタップします")}
       {stepBar}
@@ -1411,8 +1428,8 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
     </div>
   );
 
-  // STEP 4: 基本情報（落ち着いて入力）
-  if (step === 4) return (
+  // STEP 5: 基本情報（落ち着いて入力）
+  if (step === 5) return (
     <div>
       {hdr("基本情報を入力", "📝 木の名前・樹種・場所などを入力します")}
       {stepBar}
@@ -1451,7 +1468,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
     </div>
   );
 
-  // STEP 5: 確認・保存（→写真フォルダに自動保存）
+  // STEP 6: 確認・保存（→写真フォルダに自動保存）
   return (
     <div>
       {hdr("確認・保存")}
@@ -1479,7 +1496,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
             </div>
           ))}
         </div>
-        {ageAuto && <p style={{ fontSize:11, color:GOLD, margin:"8px 0 0" }}>🤖 推定樹齢は幹周りと樹種から自動計算</p>}
+        {ageAuto && <p style={{ fontSize:11, color:GRN, margin:"8px 0 0" }}>🤖 推定樹齢は幹周りと樹種から自動計算</p>}
       </div>
       {photo && (trunk||height||spread) && <div style={{ background:"rgba(45,106,79,0.06)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
         <p style={{ fontSize:12, color:"#2d6a4f", margin:0 }}>📸 登録後に記録画像が写真フォルダに自動保存されます</p>
@@ -1616,8 +1633,8 @@ function WizardMeasTrunk({ prof, onMeasured, onSkip }) {
 
   if (!showCam) return (
     <>
-      <div style={{ ...CARD, background:"rgba(255,209,102,0.08)", border:"1px solid rgba(255,209,102,0.2)" }}>
-        <p style={{ fontSize:12, color:GOLD, margin:0, lineHeight:1.7 }}>💡 木から <strong>2〜5m</strong> 離れて幹が大きく映る状態にしてください</p>
+      <div style={{ ...CARD, background:"rgba(45,106,79,0.08)", border:"1.5px solid rgba(45,106,79,0.25)" }}>
+        <p style={{ fontSize:12, color:GRN, margin:0, lineHeight:1.7 }}>💡 木から <strong>2〜5m</strong> 離れて幹が大きく映る状態にしてください</p>
       </div>
       <DistPanel bodyH={bodyH} setBodyH={setBodyH} eyeH="" setEyeH={() => {}} dist={dist} setDist={setDist} distMode={distMode} setDistMode={setDistMode} stride={stride} setStride={setStride} walkCount={walkCount} setWalkCount={setWalkCount} showEyeH={false} />
       <button style={PRI} onClick={() => setShowCam(true)} disabled={!dist}>次へ → カメラで測定する</button>
@@ -1692,7 +1709,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
             <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
             <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>大きな木のアルバム</h2>
           </div>
-          {trees.length>0&&<button onClick={() => setShowPdf(true)} style={{ fontSize:12, color:GOLD, background:"rgba(255,209,102,0.1)", border:`1px solid rgba(255,209,102,0.35)`, borderRadius:8, padding:"6px 12px", cursor:"pointer", fontFamily:"inherit" }}>📄 PDF出力</button>}
+          {trees.length>0&&<button onClick={() => setShowPdf(true)} style={{ fontSize:12, color:GRN, background:"rgba(45,106,79,0.08)", border:`1.5px solid rgba(45,106,79,0.3)`, borderRadius:8, padding:"6px 12px", cursor:"pointer", fontFamily:"inherit" }}>📄 PDF出力</button>}
         </div>
 
         {/* サムネグリッド統計 */}
@@ -1745,7 +1762,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
                 <div style={{ display:"flex", gap:8 }}>
                   {t.measurements?.height&&<span style={{ fontSize:11, color:"#5a8c6a" }}>樹高 <strong style={{ color:"#2d6a4f" }}>{t.measurements.height}m</strong></span>}
                   {t.measurements?.trunk&&<span style={{ fontSize:11, color:"#5a8c6a" }}>幹周 <strong style={{ color:BLUE }}>{t.measurements.trunk}cm</strong></span>}
-                  {t.measurements?.age&&<span style={{ fontSize:11, color:"#5a8c6a" }}>樹齢 <strong style={{ color:GOLD }}>{t.measurements.age}年</strong></span>}
+                  {t.measurements?.age&&<span style={{ fontSize:11, color:"#5a8c6a" }}>樹齢 <strong style={{ color:GRN }}>{t.measurements.age}年</strong></span>}
                 </div>
               </div>
               <div style={{ display:"flex", alignItems:"center", paddingRight:10, color:"#5a8c6a", fontSize:18 }}>›</div>
@@ -1852,7 +1869,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
           <div style={{ marginBottom:10 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
               <span style={{ ...LBL, marginBottom:0 }}>推定樹齢：</span>
-              {ageAuto && <span style={{ fontSize:11, color:GOLD, background:"rgba(255,209,102,0.15)", border:"1px solid rgba(255,209,102,0.3)", borderRadius:20, padding:"2px 8px" }}>🤖 自動推定</span>}
+              {ageAuto && <span style={{ fontSize:11, color:GRN, background:"rgba(255,209,102,0.15)", border:"1px solid rgba(255,209,102,0.3)", borderRadius:20, padding:"2px 8px" }}>🤖 自動推定</span>}
             </div>
             <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:4 }}>
               <input style={{ ...INP, fontSize:20, borderColor: ageAuto ? "rgba(255,209,102,0.5)" : "rgba(126,203,161,0.4)" }}
@@ -1864,8 +1881,8 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
             {ageAuto && trunk && species && <p style={{ fontSize:11, color:"#5a8c6a", margin:"0 0 6px" }}>
               {trunk}cm ÷ {GROWTH_RATE[species]}cm/年（{species}）＝ 約{age}年
             </p>}
-            <div style={{ background:"rgba(255,193,7,0.07)", border:"1px solid rgba(255,193,7,0.18)", borderRadius:8, padding:"8px 12px", marginTop:6 }}>
-              <p style={{ fontSize:11, color:"#ffc107", margin:0, lineHeight:1.7 }}>
+            <div style={{ background:"rgba(45,106,79,0.06)", border:"1px solid rgba(255,193,7,0.18)", borderRadius:8, padding:"8px 12px", marginTop:6 }}>
+              <p style={{ fontSize:11, color:"#2d6a4f", margin:0, lineHeight:1.7 }}>
                 ⚠️ 樹齢は参考値です。成長速度は立地・気候・管理条件により大きく異なります。年輪調査など専門的手法による確認を推奨します。
               </p>
             </div>
@@ -1883,7 +1900,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
             <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{cur.name}</h2>
           </div>
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={async ()=>{ await printPDF([cur]); }} style={{ fontSize:12, color:GOLD, background:"rgba(255,209,102,0.1)", border:`1px solid rgba(255,209,102,0.3)`, borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>📄</button>
+            <button onClick={async ()=>{ await printPDF([cur]); }} style={{ fontSize:12, color:GRN, background:"rgba(45,106,79,0.08)", border:`1px solid rgba(255,209,102,0.3)`, borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>📄</button>
             <button onClick={()=>openEdit(cur)} style={{ fontSize:12, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:8, padding:"6px 12px", cursor:"pointer", fontFamily:"inherit" }}>✏️ 編集</button>
             <button onClick={()=>doDelete(cur.id)} style={{ fontSize:12, color:"#ff8080", background:"rgba(220,50,50,0.1)", border:"1px solid rgba(220,50,50,0.4)", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>🗑️</button>
           </div>
@@ -1955,7 +1972,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
             📸 記録画像
           </button>
           <button onClick={() => onMeasureHeight(cur.id)} style={{ flex:1, padding:"13px 6px", background:"rgba(116,179,206,0.1)", border:`1.5px solid ${BLUE}`, borderRadius:12, color:BLUE, fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>📐 樹高</button>
-          <button onClick={() => onMeasureSpread(cur.id)} style={{ flex:1, padding:"13px 6px", background:"rgba(255,209,102,0.1)", border:`1.5px solid ${GOLD}`, borderRadius:12, color:GOLD, fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>🌿 枝張り</button>
+          <button onClick={() => onMeasureSpread(cur.id)} style={{ flex:1, padding:"13px 6px", background:"rgba(45,106,79,0.08)", border:`1.5px solid ${GOLD}`, borderRadius:12, color:GRN, fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>🌿 枝張り</button>
           <button onClick={() => onMeasureTrunk(cur.id)} style={{ flex:1, padding:"13px 6px", background:"rgba(168,213,181,0.1)", border:"1.5px solid #a8d5b5", borderRadius:12, color:"#a8d5b5", fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>🌲 幹周り</button>
         </div>
         {/* 画像プレビューモーダル */}
@@ -2121,7 +2138,7 @@ async function saveTreeImage(tree) {
   const measItems = [
     m.height ? { label: "樹高",   value: m.height, unit: "m",  color: "#7ecba1" } : null,
     m.trunk  ? { label: "幹周り", value: m.trunk,  unit: "cm", color: "#74b3ce" } : null,
-    m.spread ? { label: "枝張り", value: m.spread, unit: "m",  color: "#ffd166" } : null,
+    m.spread ? { label: "枝張り", value: m.spread, unit: "m",  color: "#7ecba1" } : null,
     m.age    ? { label: "推定樹齢",value: m.age,   unit: "年", color: "#c4a882" } : null,
   ].filter(Boolean);
 
@@ -2163,19 +2180,21 @@ async function saveTreeImage(tree) {
   const sizes = chars.map((_, i) => Math.round(BASE - VARIANCE/2 + rng(i) * VARIANCE));
 
   // 左縦書き（上から下へ・掛け軸スタイル）
-  ctx.shadowColor = "rgba(0,0,0,0.7)";
-  ctx.shadowBlur = 8;
-  ctx.textAlign = "center";
-  ctx.fillStyle = "rgba(255,255,255,0.78)";
+  ctx.shadowColor = "rgba(0,0,0,0.75)";
+  ctx.shadowBlur = 10;
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(255,255,255,0.82)";
 
   // 上から順に描く・左端から少し内側
-  const leftX = 52;
-  let curY = 120; // 上から開始
+  const leftX = 48;
+  let curY = 100; // 上から開始
   chars.forEach((ch, i) => {
     const s = sizes[i];
     ctx.font = `${s}px ${FONT}`;
     ctx.fillText(ch, leftX, curY);
-    curY += s + 5;
+    curY += s + 6;
+    // 画面下端を超えそうなら止める
+    if (curY > H - 120) return;
   });
 
   // 記録日・アプリ名（最下部）
