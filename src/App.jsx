@@ -1700,7 +1700,8 @@ function WizardMeasTrunk({ prof, onMeasured, onSkip }) {
     const diamM = +(parseFloat(dist) * (Math.tan(Math.abs(lA)*Math.PI/180) + Math.tan(Math.abs(rA)*Math.PI/180))).toFixed(3);
     const circ = +(diamM * 100 * Math.PI).toFixed(1);
     stopCamera();
-    onMeasured(circ+"");
+    // 歩数モードの場合は walkCount を渡す（距離積算に使う）
+    onMeasured(circ+"", distMode===1 ? walkCount : "");
   };
 
   if (!showCam) return (
