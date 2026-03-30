@@ -138,18 +138,94 @@ const TAB = (on) => ({ flex: 1, padding: "11px 6px", borderRadius: 8, cursor: "p
 const SML = (c) => ({ fontSize: 11, color: c, background: "rgba(255,255,255,0.9)", border: `1.5px solid ${c}`, borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontFamily: "inherit", marginTop: 6 });
 
 // 樹種別年間成長量（幹周りcm/年）
+// 年間幹周成長量(cm/年)
+// 参考：国土技術政策総合研究所・日本緑化センター・各研究資料
 const GROWTH_RATE = {
-  "クスノキ": 3.5, "ケヤキ": 2.5, "イチョウ": 2.0,
-  "サクラ": 3.0, "マツ": 1.5, "スギ": 2.0,
-  "ヒノキ": 1.8, "プラタナス": 4.0, "メタセコイア": 4.0,
-  "ヒマラヤスギ": 3.5, "シラカシ": 2.5, "トウカエデ": 2.8,
-  "その他": 2.5,
+  // ── 巨木・天然記念物に多い樹種 ──
+  "クスノキ":     3.5,  // 成長速・日本最大の巨木多い
+  "スギ":         2.0,  // 巨木本数1位(縄文杉など)
+  "ケヤキ":       2.5,  // 巨木本数2位
+  "イチョウ":     2.0,  // 巨木本数4位・神社仏閣に多い
+  "シイノキ":     2.2,  // 巨木本数5位(ツブラジイ/スダジイ)
+  "タブノキ":     2.8,  // 巨木本数6位・照葉樹林
+  "カツラ":       3.0,  // 渓流沿いの巨木・多幹
+  "トチノキ":     2.5,  // 山地の巨木
+  "ムクノキ":     2.8,  // 社寺の巨木に多い
+  "エノキ":       2.5,  // 里の巨木
+  "ミズナラ":     2.0,  // 北日本の巨木
+  "コナラ":       1.8,  // 雑木林
+  "アラカシ":     2.0,  // 西日本の社寺
+  "シラカシ":     2.5,  // 関東の社寺
+  "アカガシ":     2.2,  // 西日本の照葉樹
+  "ウラジロガシ": 2.0,  // 山地の大木
+  // ── 社寺・神社の御神木に多い ──
+  "サクラ":       3.0,  // エドヒガン・ヤマザクラなど
+  "サワラ":       1.8,  // 神社の御神木
+  "コウヤマキ":   1.2,  // 高野山など・成長遅
+  "ビャクシン":   1.0,  // 神社・成長極遅・長寿
+  "スダジイ":     2.2,  // 照葉樹林の巨木
+  "ツブラジイ":   2.0,  // 西日本の照葉樹
+  // ── 針葉樹 ──
+  "ヒノキ":       1.8,
+  "アスナロ":     1.5,  // ヒバとも呼ぶ
+  "コウヤヒノキ": 1.5,
+  "マツ":         1.5,  // アカマツ・クロマツ共通
+  "アカマツ":     1.5,
+  "クロマツ":     1.5,
+  "カラマツ":     2.5,  // 成長速
+  "トドマツ":     1.5,
+  "エゾマツ":     1.5,
+  "モミ":         1.8,
+  "ウラジロモミ": 1.5,
+  "ツガ":         1.5,
+  // ── 街路樹・公園樹 ──
+  "プラタナス":   4.0,  // 成長速
+  "メタセコイア": 4.0,  // 成長速
+  "ヒマラヤスギ": 3.5,
+  "トウカエデ":   2.8,
+  "ユリノキ":     3.5,  // 成長速
+  "センダン":     3.5,  // 暖地・成長速
+  "シンジュ":     5.0,  // ニワウルシ・成長極速
+  "ポプラ":       5.0,  // 成長極速
+  "ニレ":         2.5,
+  "ハルニレ":     2.5,
+  "アキニレ":     2.0,
+  // ── その他自生種 ──
+  "ホオノキ":     2.5,
+  "コブシ":       2.0,
+  "ハクモクレン": 2.5,
+  "クヌギ":       2.2,
+  "イヌシデ":     1.8,
+  "アオシデ":     1.8,
+  "サワグルミ":   3.0,
+  "ハンノキ":     2.5,
+  "カキノキ":     1.5,
+  "クリ":         2.0,
+  "その他":       2.5,
 };
 function estimateAge(trunkCm, species) {
   const rate = GROWTH_RATE[species] || 2.5;
   return Math.round(trunkCm / rate);
 }
-const TREE_TYPES = ["クスノキ","ケヤキ","イチョウ","サクラ","マツ","スギ","ヒノキ","プラタナス","メタセコイア","ヒマラヤスギ","シラカシ","トウカエデ","その他"];
+
+// 樹種リスト（カテゴリ分けで選びやすく）
+const TREE_TYPES = [
+  // 巨木・天然記念物に多い
+  "クスノキ","スギ","ケヤキ","イチョウ","シイノキ","タブノキ",
+  "カツラ","トチノキ","ムクノキ","エノキ","ミズナラ","コナラ",
+  "アラカシ","シラカシ","アカガシ","ウラジロガシ",
+  // 社寺・神社
+  "サクラ","ビャクシン","コウヤマキ","サワラ","スダジイ","ツブラジイ",
+  // 針葉樹
+  "ヒノキ","マツ","アカマツ","クロマツ","カラマツ",
+  "モミ","ツガ","トドマツ","エゾマツ","アスナロ",
+  // 街路樹・公園
+  "プラタナス","メタセコイア","ヒマラヤスギ","トウカエデ",
+  "ユリノキ","センダン","ポプラ","ニレ","ハルニレ",
+  // その他
+  "ホオノキ","コブシ","クヌギ","サワグルミ","カキノキ","クリ",
+  "その他",
+];
 
 // ================================================================
 // CAMERA HOOK
@@ -1764,6 +1840,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
   const [search, setSearch] = useState("");
   const [showPdf, setShowPdf] = useState(false);
   const [previewImage, setPreviewImage] = useState(null); // 画像プレビュー
+  const [osmModal, setOsmModal] = useState(null); // OSM登録モーダル
   const fileRef = useRef();
   const detailPhotoRef = useRef();
   const [photo, setPhoto] = useState(null);
@@ -2063,15 +2140,62 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
           </div>}
         </div>}
         {/* 記録画像 & 測定ボタン */}
-        <div style={{ display:"flex", gap:8, marginBottom:10 }}>
+        <div style={{ display:"flex", gap:8, marginBottom:8 }}>
           <button onClick={async () => { const d = await saveTreeImage(cur); if (d) setPreviewImage(d); }}
             style={{ flex:1, padding:"13px 6px", background:"rgba(126,203,161,0.15)", border:`1.5px solid ${GRN}`, borderRadius:12, color:GRN, fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>
             📸 記録画像
           </button>
           <button onClick={() => onMeasureHeight(cur.id)} style={{ flex:1, padding:"13px 6px", background:"rgba(116,179,206,0.1)", border:`1.5px solid ${BLUE}`, borderRadius:12, color:BLUE, fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>📐 樹高</button>
-          <button onClick={() => onMeasureSpread(cur.id)} style={{ flex:1, padding:"13px 6px", background:"rgba(45,106,79,0.08)", border:`1.5px solid ${GOLD}`, borderRadius:12, color:GRN, fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>🌿 枝張り</button>
+          <button onClick={() => onMeasureSpread(cur.id)} style={{ flex:1, padding:"13px 6px", background:"rgba(45,106,79,0.08)", border:`1.5px solid ${GRN}`, borderRadius:12, color:GRN, fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>🌿 枝張り</button>
           <button onClick={() => onMeasureTrunk(cur.id)} style={{ flex:1, padding:"13px 6px", background:"rgba(168,213,181,0.1)", border:"1.5px solid #a8d5b5", borderRadius:12, color:"#a8d5b5", fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"center" }}>🌲 幹周り</button>
         </div>
+        {/* OSM登録ボタン */}
+        <button onClick={() => { const r = openOSMEditor(cur); if (r) setOsmModal(r); }}
+          style={{ width:"100%", padding:"13px", background:"rgba(116,179,206,0.12)", border:"1.5px solid #74b3ce", borderRadius:12, color:"#2a4a7a", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          🗺️　OpenStreetMapに登録する
+        </button>
+        {/* OSM登録モーダル */}
+        {osmModal && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:200, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div style={{ background:"#fff", borderRadius:16, padding:24, width:"100%", maxWidth:360 }}>
+            <p style={{ fontSize:18, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 16px", textAlign:"center" }}>🗺️ OSMに登録する</p>
+
+            {/* 登録内容の確認 */}
+            <div style={{ background:"#f0f7f0", borderRadius:10, padding:"12px 14px", marginBottom:16 }}>
+              <p style={{ fontSize:13, color:"#2d6a4f", fontWeight:"bold", margin:"0 0 8px" }}>登録される情報：</p>
+              {Object.entries(osmModal.tags).map(([k,v]) => (
+                <div key={k} style={{ display:"flex", gap:8, fontSize:12, color:"#333", marginBottom:3 }}>
+                  <span style={{ color:"#5a8c6a", minWidth:100 }}>{k}</span>
+                  <span>=</span>
+                  <span style={{ color:"#1a3a2a", fontWeight:"bold" }}>{v}</span>
+                </div>
+              ))}
+              <div style={{ display:"flex", gap:8, fontSize:12, color:"#333", marginTop:4 }}>
+                <span style={{ color:"#5a8c6a", minWidth:100 }}>座標</span>
+                <span>=</span>
+                <span style={{ color:"#1a3a2a", fontWeight:"bold" }}>{osmModal.lat.toFixed(5)}, {osmModal.lng.toFixed(5)}</span>
+              </div>
+            </div>
+
+            <div style={{ background:"rgba(45,106,79,0.08)", borderRadius:8, padding:"10px 12px", marginBottom:16 }}>
+              <p style={{ fontSize:12, color:"#2d6a4f", margin:0, lineHeight:1.7 }}>
+                ① 「OSMを開く」をタップ<br/>
+                ② SafariでOSMが開きます<br/>
+                ③ ログイン済みなら「ノードを追加」で木を登録<br/>
+                ④ 上のタグ情報を入力して保存
+              </p>
+            </div>
+
+            <button onClick={() => { window.open(osmModal.url, "_blank"); setOsmModal(null); }}
+              style={{ width:"100%", padding:"14px", background:"#2d5fa8", border:"none", borderRadius:12, color:"#fff", fontSize:16, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold", marginBottom:10 }}>
+              🗺️　OSMを開く
+            </button>
+            <button onClick={() => setOsmModal(null)}
+              style={{ width:"100%", padding:"12px", background:"none", border:"1.5px solid rgba(45,106,79,0.3)", borderRadius:12, color:"#2d6a4f", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
+              キャンセル
+            </button>
+          </div>
+        </div>}
+
         {/* 画像プレビューモーダル */}
         {previewImage && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.92)", zIndex:200, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20 }}>
           <p style={{ color:"rgba(255,255,255,0.55)", fontSize:12, margin:"0 0 10px", textAlign:"center" }}>
@@ -2160,29 +2284,45 @@ async function saveTreeImage(tree) {
         for (let i = 0; i < d.length; i += 4) {
           let r = d[i], g = d[i+1], b = d[i+2];
 
-          // ① 彩度アップ（鮮やか）
+          // ピクセルの位置（中央からの距離を正規化）
+          const px = (i / 4) % W;
+          const py = Math.floor((i / 4) / W);
+          // 縦長楕円でスポット領域を定義（横0.45、縦0.65の楕円）
+          const dx = (px - W * 0.5) / (W * 0.45);
+          const dy = (py - H * 0.48) / (H * 0.65);
+          const spotDist = Math.sqrt(dx * dx + dy * dy);
+          // 中央に近いほど1、外側に近いほど0（0.6〜1.2の間で滑らかに）
+          const spotFactor = Math.max(0, Math.min(1, 1 - (spotDist - 0.6) / 0.6));
+
+          // ① 彩度アップ（中央ほど強く・最大1.55、周辺1.2）
           const avg = (r + g + b) / 3;
-          const sat = 1.35;
+          const sat = 1.2 + spotFactor * 0.35;
           r = avg + (r - avg) * sat;
           g = avg + (g - avg) * sat;
           b = avg + (b - avg) * sat;
 
-          // ② 暖色シフト（フィルム感・赤・黄を少し強く）
+          // ② 暖色シフト（フィルム感）
           r = r * 1.08;
           g = g * 1.02;
           b = b * 0.90;
 
-          // ③ コントラスト（暗部を締める）
-          const cont = 1.18;
+          // ③ コントラスト（中央ほど高く・1.15〜1.28）
+          const cont = 1.15 + spotFactor * 0.13;
           const mid = 128;
           r = (r - mid) * cont + mid;
           g = (g - mid) * cont + mid;
           b = (b - mid) * cont + mid;
 
-          // ④ ハイライトを少しフェード（フィルムの白飛び感）
-          r = r > 220 ? 220 + (r - 220) * 0.4 : r;
-          g = g > 220 ? 220 + (g - 220) * 0.4 : g;
-          b = b > 220 ? 220 + (b - 220) * 0.4 : b;
+          // ④ 中央を少し明るく（露出補正・最大+12）
+          const brightBoost = spotFactor * 12;
+          r += brightBoost;
+          g += brightBoost;
+          b += brightBoost;
+
+          // ⑤ ハイライトフェード
+          r = r > 225 ? 225 + (r - 225) * 0.35 : r;
+          g = g > 225 ? 225 + (g - 225) * 0.35 : g;
+          b = b > 225 ? 225 + (b - 225) * 0.35 : b;
 
           d[i]   = Math.max(0, Math.min(255, r));
           d[i+1] = Math.max(0, Math.min(255, g));
@@ -2190,13 +2330,18 @@ async function saveTreeImage(tree) {
         }
         ctx.putImageData(imgData, 0, 0);
 
-        // ⑤ ビネット（周辺暗化）
-        const vig = ctx.createRadialGradient(W/2, H/2, H*0.28, W/2, H/2, H*0.82);
-        vig.addColorStop(0, "rgba(0,0,0,0)");
-        vig.addColorStop(0.6, "rgba(0,0,0,0.08)");
-        vig.addColorStop(1, "rgba(0,0,0,0.42)");
+        // ⑥ 縦長楕円ビネット（周辺暗化・中央の木を際立てる）
+        // Canvasのscaleで楕円ビネットを実現
+        ctx.save();
+        ctx.scale(1, 1.6); // 縦長に引き延ばし
+        const vig = ctx.createRadialGradient(W/2, H/2/1.6, H*0.2, W/2, H/2/1.6, H*0.72);
+        vig.addColorStop(0,   "rgba(0,0,0,0)");
+        vig.addColorStop(0.5, "rgba(0,0,0,0.04)");
+        vig.addColorStop(0.8, "rgba(0,0,0,0.22)");
+        vig.addColorStop(1,   "rgba(0,0,0,0.58)");
         ctx.fillStyle = vig;
-        ctx.fillRect(0, 0, W, H);
+        ctx.fillRect(0, 0, W, H/1.6);
+        ctx.restore();
 
         resolve();
       };
