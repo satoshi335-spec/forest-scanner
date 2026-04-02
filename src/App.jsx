@@ -758,9 +758,9 @@ function HeightApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
             <line x1="46" y1="148" x2="170" y2="148" stroke="#74b3ce" strokeWidth="1" strokeDasharray="4,3"/>
             <text x="108" y="158" fill="#74b3ce" fontSize="9" textAnchor="middle">距離 d</text>
           </svg>
-          <p style={{ fontSize:11, color:"#2d6a4f", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>
+          <p style={{ fontSize:15, color:"#1a3a2a", textAlign:"center", margin:"10px 0 0", lineHeight:2, fontWeight:"bold" }}>
             カメラ画面の梢 → 根元を順にタップ<br/>
-            画面上の高さと距離から樹高を計算
+            <span style={{ fontSize:13, color:"#2d6a4f", fontWeight:"normal" }}>画面上の高さと距離から樹高を計算</span>
           </p>
         </div>
         <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
@@ -889,9 +889,9 @@ function SpreadApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
             <line x1="40" y1="148" x2="150" y2="148" stroke="#74b3ce" strokeWidth="1" strokeDasharray="4,3"/>
             <text x="95" y="158" fill="#74b3ce" fontSize="9" textAnchor="middle">距離 d</text>
           </svg>
-          <p style={{ fontSize:11, color:"#2d6a4f", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>
+          <p style={{ fontSize:15, color:"#1a3a2a", textAlign:"center", margin:"10px 0 0", lineHeight:2, fontWeight:"bold" }}>
             カメラ画面の枝左端 → 右端を順にタップ<br/>
-            画面上の幅と距離から枝張りを計算
+            <span style={{ fontSize:13, color:"#2d6a4f", fontWeight:"normal" }}>画面上の幅と距離から枝張りを計算</span>
           </p>
         </div>
         <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
@@ -1272,9 +1272,9 @@ function TrunkApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTreeN
             <text x="108" y="70" fill={BLUE} fontSize="9" textAnchor="middle">左端</text>
             <text x="172" y="70" fill={GOLD} fontSize="9" textAnchor="middle">右端</text>
           </svg>
-          <p style={{ fontSize:11, color:"#2d6a4f", textAlign:"center", margin:"8px 0 0", lineHeight:1.8 }}>
+          <p style={{ fontSize:15, color:"#1a3a2a", textAlign:"center", margin:"10px 0 0", lineHeight:2, fontWeight:"bold" }}>
             カメラ画面の幹左端 → 右端を順にタップ<br/>
-            画面上の幅と距離から直径 → 幹周り（×π）を計算
+            <span style={{ fontSize:13, color:"#2d6a4f", fontWeight:"normal" }}>画面上の幅と距離から直径 → 幹周り（×π）を計算</span>
           </p>
         </div>
         <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
@@ -1839,6 +1839,8 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState("");
   const [showPdf, setShowPdf] = useState(false);
+  const [showExport, setShowExport] = useState(false);
+  const importRef = useRef();
   const [previewImage, setPreviewImage] = useState(null); // 画像プレビュー
   const [osmModal, setOsmModal] = useState(null); // OSM登録モーダル
   const fileRef = useRef();
@@ -1883,7 +1885,26 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
             <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
             <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>大きな木のアルバム</h2>
           </div>
-          {trees.length>0&&<button onClick={() => setShowPdf(true)} style={{ fontSize:12, color:GRN, background:"rgba(45,106,79,0.08)", border:`1.5px solid rgba(45,106,79,0.3)`, borderRadius:8, padding:"6px 12px", cursor:"pointer", fontFamily:"inherit" }}>📄 PDF出力</button>}
+          <div style={{ display:"flex", gap:6 }}>
+            {trees.length>0&&<button onClick={() => setShowPdf(true)} style={{ fontSize:12, color:GRN, background:"rgba(45,106,79,0.08)", border:`1.5px solid rgba(45,106,79,0.3)`, borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>📄 PDF</button>}
+            <button onClick={() => setShowExport(true)} style={{ fontSize:12, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:`1.5px solid rgba(45,106,79,0.3)`, borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>💾 バックアップ</button>
+            <input ref={importRef} type="file" accept=".json" style={{ display:"none" }} onChange={async e => {
+              const f = e.target.files[0]; if (!f) return;
+              try {
+                const text = await f.text();
+                const data = JSON.parse(text);
+                if (!Array.isArray(data)) throw new Error("形式エラー");
+                if (!window.confirm(`${data.length}本のデータをインポートしますか？\n既存データと合わせて保存されます。`)) return;
+                // 既存IDと重複しないものだけ追加（IDが同じなら上書き）
+                const merged = [...data, ...trees.filter(t => !data.find(d => d.id === t.id))];
+                onUpdate(merged);
+                alert(`✅ ${data.length}本をインポートしました`);
+              } catch(err) {
+                alert("❌ インポート失敗: ファイルの形式が正しくありません");
+              }
+              e.target.value = "";
+            }} />
+          </div>
         </div>
 
         {/* サムネグリッド統計 */}
@@ -1945,6 +1966,76 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
         )) : <div style={{ textAlign:"center", padding:"40px 20px" }}><p style={{ fontSize:36, marginBottom:12 }}>🌱</p><p style={{ fontSize:13, color:"#5a8c6a" }}>{search?"該当なし":"まだ登録されていません"}</p></div>}
 
         {showPdf && <PdfModal trees={trees} onClose={() => setShowPdf(false)} />}
+
+        {/* バックアップ・エクスポートモーダル */}
+        {showExport && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div style={{ background:"#fff", borderRadius:16, padding:24, width:"100%", maxWidth:360 }}>
+            <p style={{ fontSize:18, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 6px", textAlign:"center" }}>💾 バックアップ</p>
+            <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 20px", textAlign:"center" }}>{trees.length}本のデータ</p>
+
+            {/* JSONエクスポート */}
+            <div style={{ background:"rgba(45,106,79,0.06)", border:"1.5px solid rgba(45,106,79,0.25)", borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px" }}>📦 JSONエクスポート（完全バックアップ）</p>
+              <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 12px", lineHeight:1.6 }}>写真・測定値・GPS・メモを含む完全なバックアップ。新しいiPhoneへの移行に使えます。</p>
+              <button onClick={() => {
+                // 写真込みの完全JSON
+                const json = JSON.stringify(trees, null, 2);
+                const blob = new Blob([json], { type:"application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `ookina-ki-backup-${today()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }} style={{ width:"100%", padding:"11px", background:"#1a5c3f", border:"none", borderRadius:10, color:"#fff", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
+                📦 JSONをダウンロード
+              </button>
+            </div>
+
+            {/* CSVエクスポート */}
+            <div style={{ background:"rgba(116,179,206,0.08)", border:"1.5px solid rgba(116,179,206,0.3)", borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
+              <p style={{ fontSize:14, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px" }}>📊 CSVエクスポート（表計算用）</p>
+              <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 12px", lineHeight:1.6 }}>Excelで開ける形式。報告書作成・データ集計に便利。写真は含まれません。</p>
+              <button onClick={() => {
+                const header = ["名前","樹種","場所","樹高(m)","幹周り(cm)","枝張り(m)","推定樹齢(年)","緯度","経度","メモ","登録日","更新日"];
+                const rows = trees.map(t => [
+                  t.name, t.species||"", t.location||"",
+                  t.measurements?.height||"", t.measurements?.trunk||"",
+                  t.measurements?.spread||"", t.measurements?.age||"",
+                  t.gps?.lat||"", t.gps?.lng||"",
+                  (t.note||"").replace(/,/g,"、"),
+                  t.createdAt||"", t.updatedAt||""
+                ]);
+                const csv = [header, ...rows].map(r => r.join(",")).join("\n");
+                const bom = "\uFEFF"; // Excel文字化け防止
+                const blob = new Blob([bom + csv], { type:"text/csv;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `ookina-ki-${today()}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }} style={{ width:"100%", padding:"11px", background:"#2a4a7a", border:"none", borderRadius:10, color:"#fff", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
+                📊 CSVをダウンロード
+              </button>
+            </div>
+
+            {/* JSONインポート */}
+            <div style={{ background:"rgba(255,255,255,0.8)", border:"1.5px solid rgba(45,106,79,0.2)", borderRadius:12, padding:"14px 16px", marginBottom:16 }}>
+              <p style={{ fontSize:14, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px" }}>📂 JSONインポート（データ復元）</p>
+              <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 12px", lineHeight:1.6 }}>バックアップJSONから復元します。既存データと重複しないものが追加されます。</p>
+              <button onClick={() => { setShowExport(false); setTimeout(()=>importRef.current?.click(), 100); }}
+                style={{ width:"100%", padding:"11px", background:"rgba(45,106,79,0.1)", border:"1.5px solid rgba(45,106,79,0.3)", borderRadius:10, color:"#1a3a2a", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
+                📂 JSONを読み込む
+              </button>
+            </div>
+
+            <button onClick={() => setShowExport(false)}
+              style={{ width:"100%", padding:"11px", background:"none", border:"1.5px solid rgba(45,106,79,0.25)", borderRadius:10, color:"#2d6a4f", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
+              閉じる
+            </button>
+          </div>
+        </div>}
 
       </>}
 
@@ -2475,6 +2566,170 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 // ================================================================
+// OSM登録（iDエディタにデータを引き継いで開く）
+// ================================================================
+function openOSMEditor(tree) {
+  const m = tree.measurements || {};
+  if (!tree.gps?.lat || !tree.gps?.lng) {
+    alert("GPS情報がありません。\nカルテ編集でGPSを取得してから登録してください。");
+    return null;
+  }
+  const lat = tree.gps.lat;
+  const lng = tree.gps.lng;
+  const tags = { "natural": "tree" };
+  if (tree.name)    tags["name"] = tree.name;
+  if (tree.species) {
+    const speciesMap = {
+      "クスノキ":"Cinnamomum camphora","ケヤキ":"Zelkova serrata",
+      "イチョウ":"Ginkgo biloba","サクラ":"Prunus","マツ":"Pinus",
+      "スギ":"Cryptomeria japonica","ヒノキ":"Chamaecyparis obtusa",
+      "プラタナス":"Platanus","メタセコイア":"Metasequoia glyptostroboides",
+      "ヒマラヤスギ":"Cedrus deodara","シラカシ":"Quercus myrsinifolia",
+      "トウカエデ":"Acer buergerianum","ビャクシン":"Juniperus chinensis",
+    };
+    tags["species:ja"] = tree.species;
+    if (speciesMap[tree.species]) tags["species"] = speciesMap[tree.species];
+  }
+  if (m.trunk)  tags["circumference"] = +(parseFloat(m.trunk) / 100).toFixed(2)+"";
+  if (m.height) tags["height"] = m.height;
+  if (tree.location) tags["description"] = tree.location + (tree.note ? " " + tree.note : "");
+  const zoom = 19;
+  const comment = encodeURIComponent(`大きな木アプリで記録: ${tree.name}`);
+  const url = `https://www.openstreetmap.org/edit?editor=id#map=${zoom}/${lat}/${lng}&comment=${comment}`;
+  return { url, tags, lat, lng };
+}
+
+// ================================================================
+// HELP & TERMS APP
+// ================================================================
+function HelpApp({ onBack }) {
+  const [tab, setTab] = useState("usage");
+
+  const Section = ({ emoji, title, children }) => (
+    <div style={{ marginBottom:20 }}>
+      <p style={{ fontSize:15, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 8px", display:"flex", alignItems:"center", gap:6 }}>
+        <span>{emoji}</span>{title}
+      </p>
+      <div style={{ fontSize:14, color:"#2d4a2d", lineHeight:1.9 }}>{children}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:16 }}>
+        <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
+        <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>使い方・利用規約</h2>
+      </div>
+
+      <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+        <button onClick={() => setTab("usage")} style={{ ...TAB(tab==="usage"), flex:1, fontSize:14, padding:"11px" }}>📖 使い方</button>
+        <button onClick={() => setTab("terms")} style={{ ...TAB(tab==="terms"), flex:1, fontSize:14, padding:"11px" }}>📋 利用規約</button>
+      </div>
+
+      {tab === "usage" && <div style={CARD}>
+        <Section emoji="🌳" title="大きな木とは">
+          樹高・幹周り・枝張りをスマホカメラでタップ測定し、写真とともに記録・管理するアプリです。インストール不要・完全無料でご利用いただけます。
+        </Section>
+
+        <Section emoji="📍" title="基本的な使い方">
+          <div style={{ background:"rgba(45,106,79,0.05)", borderRadius:10, padding:"12px 14px" }}>
+            {[
+              ["①","木の真横に立つ","GPS位置情報を取得（地図に表示されます）"],
+              ["②","3〜5歩離れて幹周り測定","カメラに幹を映してタップ"],
+              ["③","15〜20歩離れて写真撮影","歩数を覚えておく"],
+              ["④","樹高・枝張りを測定","歩数から距離を自動計算"],
+              ["⑤","基本情報を入力","木の名前・樹種・場所・メモ"],
+              ["⑥","登録・保存","記録画像を写真フォルダに保存"],
+            ].map(([num, t, desc]) => (
+              <div key={num} style={{ display:"flex", gap:10, marginBottom:10 }}>
+                <span style={{ fontSize:13, fontWeight:"bold", color:"#2d6a4f", minWidth:20 }}>{num}</span>
+                <div>
+                  <p style={{ fontSize:14, fontWeight:"bold", color:"#1a3a2a", margin:0 }}>{t}</p>
+                  <p style={{ fontSize:12, color:"#5a8c6a", margin:"2px 0 0" }}>{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <Section emoji="📐" title="測定精度について">
+          本アプリの測定値はカメラ画像のタップ方式による参考値です。視野角・距離・タップのズレにより<strong>±10〜20%程度の誤差</strong>が生じる場合があります。正式な診断書・報告書への記載には専門機器による測定値をご使用ください。
+        </Section>
+
+        <Section emoji="🌱" title="推定樹齢について">
+          推定樹齢は「幹周り ÷ 樹種別年間成長量」による参考値です。立地・気候・剪定履歴・土壌条件によって実際の樹齢は大きく異なります。参考情報としてのみご活用ください。
+        </Section>
+
+        <Section emoji="💾" title="データの保存">
+          記録データはお使いのiPhone本体に保存されます。クラウドへの自動同期はありません。機種変更・端末故障に備えて、定期的にアルバム画面の「💾 バックアップ」からJSONエクスポートを行ってください。
+        </Section>
+
+        <Section emoji="🗺️" title="OpenStreetMapへの登録">
+          カルテ詳細画面から測定データをOpenStreetMap（OSM）に登録できます。登録した情報は世界中に公開されます。天然記念物など保護が必要な木の正確な場所を登録する際はご注意ください。OSMへの登録にはOSMアカウントが必要です。
+        </Section>
+
+        <Section emoji="📱" title="ホーム画面への追加">
+          Safariでこのページを開き、共有ボタン →「ホーム画面に追加」でアプリのように使えます。オフラインでも基本機能が利用できます。
+        </Section>
+      </div>}
+
+      {tab === "terms" && <div style={CARD}>
+        <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 16px" }}>最終更新：2026年3月</p>
+
+        <Section emoji="1️⃣" title="サービスの目的">
+          本アプリ「大きな木 / My Tree Diary」は、樹木の測定・記録・共有を目的とした個人利用向けツールです。樹木医・造園関係者・樹木愛好家による現地調査の補助ツールとして提供しています。
+        </Section>
+
+        <Section emoji="2️⃣" title="測定値の取り扱い">
+          本アプリが提供する樹高・幹周り・枝張り・推定樹齢はすべて参考値です。これらの値を根拠とした公的な診断・申請・契約等に利用した場合の損害について、開発者は一切の責任を負いません。
+        </Section>
+
+        <Section emoji="3️⃣" title="データの管理">
+          記録データはユーザーの端末内に保存されます。開発者はユーザーのデータを収集・閲覧・第三者提供しません。端末の故障・初期化・OSアップデートによるデータ消失について、開発者は責任を負いません。定期的なバックアップを推奨します。
+        </Section>
+
+        <Section emoji="4️⃣" title="禁止事項">
+          <div>以下の行為を禁止します。</div>
+          <div style={{ marginTop:6 }}>
+            {["本アプリを商業目的で無断使用すること","第三者の土地に無断で立ち入り測定を行うこと","測定値を意図的に改ざんして報告書等に使用すること","OpenStreetMapへの虚偽・誤った情報の登録"].map((item, i) => (
+              <div key={i} style={{ display:"flex", gap:8, margin:"4px 0", fontSize:13 }}>
+                <span style={{ color:"#2d6a4f" }}>・</span><span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <Section emoji="5️⃣" title="免責事項">
+          本アプリは現状提供（as-is）です。動作の継続性・正確性・完全性を保証しません。Vercelのサービス停止・仕様変更等により予告なくサービスが終了する場合があります。
+        </Section>
+
+        <Section emoji="6️⃣" title="著作権">
+          本アプリのデザイン・コードの著作権は開発者に帰属します。ユーザーが登録した写真・記録データの著作権はユーザー自身に帰属します。
+        </Section>
+
+        <Section emoji="7️⃣" title="利用規約の変更">
+          利用規約は予告なく変更される場合があります。変更後も継続してご利用いただいた場合、変更後の規約に同意したものとみなします。
+        </Section>
+
+        <div style={{ background:"rgba(45,106,79,0.06)", borderRadius:10, padding:"12px 14px", marginTop:8 }}>
+          <p style={{ fontSize:12, color:"#2d6a4f", margin:0, lineHeight:1.8 }}>
+            本アプリはOpenStreetMap・Overpass API・Leaflet.jsを使用しています。
+          </p>
+          <div style={{ borderTop:"1px solid rgba(45,106,79,0.15)", marginTop:10, paddingTop:10, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div>
+              <p style={{ fontSize:15, fontWeight:"bold", color:"#1a3a2a", margin:0 }}>
+                大きな木　<span style={{ color:"#2d6a4f" }}>Satoshi</span> <span style={{ fontSize:13, color:"#5a8c6a", fontWeight:"normal" }}>(tree doctor)</span>
+              </p>
+            </div>
+            <div style={{ fontSize:28 }}>🌳</div>
+          </div>
+        </div>
+      </div>}
+    </div>
+  );
+}
+
+// ================================================================
 // MAP APP（地図表示）
 // ================================================================
 function MapApp({ trees, onSelectTree, onBack }) {
@@ -2827,6 +3082,7 @@ export default function App() {
           {menuBtn("📐","樹高を測定する","カメラで根元・梢を2点ロック",null,()=>{ setPendingTreeId(null); setMode("height"); })}
           {menuBtn("🌿","枝張りを測定する","カメラで左端・右端を2点ロック",null,()=>{ setPendingTreeId(null); setMode("spread"); })}
           {menuBtn("🌲","幹周りを測定する","カメラで幹の左右を2点ロック",null,()=>{ setPendingTreeId(null); setMode("trunk"); })}
+          {menuBtn("📖","使い方・利用規約","測定方法・データ管理・免責事項",null,()=>setMode("help"))}
           </>}
         </div>}
 
@@ -2845,6 +3101,7 @@ export default function App() {
         {mode==="trunk"&&<TrunkApp prof={prof} trees={trees} pendingTreeId={pendingTreeId} pendingTreeName={pendingTreeName} onSaveTree={(nt,eid,meas) => { if (pendingTreeId) { updateTrees(trees.map(t => t.id===pendingTreeId ? { ...t, measurements:{ ...t.measurements, ...meas }, updatedAt:today() } : t)); setPendingTreeId(null); setPendingTreeName(null); setMode("carte"); } else { onSaveTree(nt,eid,meas); } }} onBack={()=>setMode(null)}/>}
         {mode==="carte"&&<CarteApp trees={trees} onUpdate={updateTrees} onBack={()=>{ setMapSelectedId(null); setMode(null); }} onMeasureHeight={onMeasureHeight} onMeasureSpread={onMeasureSpread} onMeasureTrunk={onMeasureTrunk} initialSelectedId={mapSelectedId}/>}
         {mode==="map"&&<MapApp trees={trees} onSelectTree={onSelectTree} onBack={()=>setMode(null)}/>}
+        {mode==="help"&&<HelpApp onBack={()=>setMode(null)}/>}
       </div>
     </div>
   );
