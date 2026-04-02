@@ -2599,6 +2599,296 @@ function openOSMEditor(tree) {
   return { url, tags, lat, lng };
 }
 
+
+// ================================================================
+// MY きのこ図鑑
+// ================================================================
+
+const MUSHROOM_TYPES = [
+  "シイタケ","マイタケ","ナメコ","エノキタケ","ヒラタケ","ブナシメジ",
+  "マッシュルーム","トリュフ","ポルチーニ","アミタケ","ハナイグチ",
+  "チチタケ","カワリハツ","タマゴタケ","テングタケ","ベニテングタケ",
+  "ドクツルタケ","ツキヨタケ","カキシメジ","クサウラベニタケ",
+  "アンズタケ","ホウキタケ","サンゴハリタケ","ニカワジョウゴタケ",
+  "キクラゲ","シロキクラゲ","ノウタケ","オニフスベ","ツチグリ",
+  "コフキサルノコシカケ","カワラタケ","マスタケ","ヤグラタケ",
+  "モリノカレバタケ","コムラサキシメジ","キシメジ","ウラベニホテイシメジ",
+  "クリタケ","サクラシメジ","ムキタケ","チャナメツムタケ",
+  "その他（不明）"
+];
+
+const EDIBILITY = [
+  { value:"edible",   label:"食べられる", emoji:"✅", color:"#2d6a4f" },
+  { value:"toxic",    label:"毒",         emoji:"☠️", color:"#c0392b" },
+  { value:"unknown",  label:"不明",       emoji:"❓", color:"#7f8c8d" },
+  { value:"inedible", label:"食不適",     emoji:"⚠️", color:"#e67e22" },
+];
+
+const MUSHROOM_DB_NAME = "kinoko_db";
+const MUSHROOM_STORE   = "mushrooms";
+
+async function loadMushroomsDB() {
+  return new Promise(resolve => {
+    const req = indexedDB.open(MUSHROOM_DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(MUSHROOM_STORE, { keyPath:"id" });
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const tx = db.transaction(MUSHROOM_STORE, "readonly");
+      const all = []; tx.objectStore(MUSHROOM_STORE).openCursor().onsuccess = ev => {
+        const cur = ev.target.result; if (cur) { all.push(cur.value); cur.continue(); }
+        else resolve(all);
+      };
+    };
+    req.onerror = () => resolve([]);
+  });
+}
+
+async function saveMushroomsDB(items) {
+  return new Promise(resolve => {
+    const req = indexedDB.open(MUSHROOM_DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(MUSHROOM_STORE, { keyPath:"id" });
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const tx = db.transaction(MUSHROOM_STORE, "readwrite");
+      const store = tx.objectStore(MUSHROOM_STORE);
+      store.clear();
+      items.forEach(item => store.put(item));
+      tx.oncomplete = resolve;
+    };
+  });
+}
+
+function KinokoApp({ onBack }) {
+  const [mushrooms, setMushrooms] = useState([]);
+  const [view, setView]       = useState("list"); // list | detail | form
+  const [selected, setSelected] = useState(null);
+  const [search, setSearch]   = useState("");
+  const [filterEd, setFilterEd] = useState("all");
+  // form state
+  const [editId, setEditId]   = useState(null);
+  const [photo, setPhoto]     = useState(null);
+  const [name, setName]       = useState("");
+  const [species, setSpecies] = useState("");
+  const [edibility, setEdibility] = useState("unknown");
+  const [location, setLocation] = useState("");
+  const [note, setNote]       = useState("");
+  const [gps, setGps]         = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const fileRef = useRef();
+
+  useEffect(() => { loadMushroomsDB().then(d => setMushrooms(d.sort((a,b)=>parseDate(b.createdAt)-parseDate(a.createdAt)))); }, []);
+
+  const save = (next) => { setMushrooms(next); saveMushroomsDB(next); };
+
+  const openNew = () => { setEditId(null); setPhoto(null); setName(""); setSpecies(""); setEdibility("unknown"); setLocation(""); setNote(""); setGps(null); setView("form"); };
+  const openEdit = (m) => { setEditId(m.id); setPhoto(m.photo); setName(m.name); setSpecies(m.species||""); setEdibility(m.edibility||"unknown"); setLocation(m.location||""); setNote(m.note||""); setGps(m.gps||null); setView("form"); };
+
+  const doSave = () => {
+    if (!name.trim()) { alert("きのこの名前を入力してください"); return; }
+    const item = { id: editId||newId(), name:name.trim(), species, edibility, location, note, photo, gps, createdAt: editId ? mushrooms.find(m=>m.id===editId)?.createdAt||today() : today(), updatedAt:today() };
+    const next = editId ? mushrooms.map(m => m.id===editId?item:m) : [item,...mushrooms];
+    save(next); setSelected(item); setView("detail");
+  };
+
+  const doDelete = (id) => { if (!window.confirm("削除しますか？")) return; save(mushrooms.filter(m=>m.id!==id)); setSelected(null); setView("list"); };
+
+  const onPhoto = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = async ev => { const res = await resizePhoto(ev.target.result, 800); setPhoto(res); };
+    r.readAsDataURL(f);
+  };
+
+  const getGPSNow = async () => {
+    setGpsLoading(true);
+    try { const g = await getGPS(); setGps(g); } catch(e) { alert("GPS取得失敗"); }
+    setGpsLoading(false);
+  };
+
+  const filtered = mushrooms.filter(m =>
+    (filterEd==="all" || m.edibility===filterEd) &&
+    (!search || m.name.includes(search) || m.species?.includes(search) || m.location?.includes(search))
+  );
+
+  const cur = selected && mushrooms.find(m=>m.id===selected.id);
+  const edInfo = (val) => EDIBILITY.find(e=>e.value===val) || EDIBILITY[2];
+
+  // ── LIST ──
+  if (view==="list") return (
+    <div>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:8, marginBottom:14 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
+          <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>🍄 Myきのこ図鑑</h2>
+        </div>
+        <button onClick={openNew} style={{ padding:"8px 14px", background:"#2d6a4f", border:"none", borderRadius:20, color:"#fff", fontSize:13, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>＋ 追加</button>
+      </div>
+
+      {/* 統計 */}
+      {mushrooms.length>0 && <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+        {[["発見",`${mushrooms.length}種`,"#2d6a4f"],["食べられる",`${mushrooms.filter(m=>m.edibility==="edible").length}種`,"#2d6a4f"],["毒",`${mushrooms.filter(m=>m.edibility==="toxic").length}種`,"#c0392b"]].map(([l,v,c])=>(
+          <div key={l} style={{ flex:1, background:"rgba(255,255,255,0.95)", border:"1px solid rgba(45,106,79,0.15)", borderRadius:10, padding:"8px", textAlign:"center" }}>
+            <p style={{ fontSize:10, color:"#5a8c6a", margin:"0 0 2px" }}>{l}</p>
+            <p style={{ fontSize:18, fontWeight:"bold", color:c, margin:0 }}>{v}</p>
+          </div>
+        ))}
+      </div>}
+
+      {/* 検索・フィルター */}
+      <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 名前・場所で検索" style={{ ...INP, flex:1, padding:"10px 12px", fontSize:14 }} />
+      </div>
+      <div style={{ display:"flex", gap:6, marginBottom:14, overflowX:"auto" }}>
+        {[["all","すべて","#2d6a4f"],...EDIBILITY.map(e=>[e.value, e.emoji+" "+e.label, e.color])].map(([val,label,color])=>(
+          <button key={val} onClick={()=>setFilterEd(val)}
+            style={{ padding:"6px 12px", borderRadius:20, border:`1.5px solid ${filterEd===val?color:"rgba(45,106,79,0.2)"}`, background:filterEd===val?color:"transparent", color:filterEd===val?"#fff":color, fontSize:12, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", fontWeight:filterEd===val?"bold":"normal" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* 一覧 */}
+      {filtered.length>0 ? filtered.map(m => {
+        const ed = edInfo(m.edibility);
+        return (
+          <button key={m.id} onClick={()=>{ setSelected(m); setView("detail"); }}
+            style={{ width:"100%", display:"flex", gap:12, alignItems:"center", background:"rgba(255,255,255,0.97)", border:"1.5px solid rgba(45,106,79,0.12)", borderRadius:14, padding:"10px 12px", marginBottom:8, cursor:"pointer", fontFamily:"inherit", textAlign:"left", boxShadow:"0 2px 8px rgba(45,106,79,0.08)" }}>
+            {/* サムネ */}
+            <div style={{ width:64, height:64, borderRadius:10, overflow:"hidden", flexShrink:0, background:"rgba(45,106,79,0.08)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              {m.photo ? <img src={m.photo} alt={m.name} style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : <span style={{ fontSize:32 }}>🍄</span>}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:3 }}>
+                <p style={{ fontSize:15, fontWeight:"bold", color:"#1a3a2a", margin:0 }}>{m.name}</p>
+                <span style={{ fontSize:13 }}>{ed.emoji}</span>
+              </div>
+              {m.species && <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 2px" }}>{m.species}</p>}
+              <p style={{ fontSize:11, color:"#aaa", margin:0 }}>{m.location||""}{m.location&&m.createdAt?" ・ ":""}{m.createdAt}</p>
+            </div>
+            <span style={{ color:"#5a8c6a", fontSize:18 }}>›</span>
+          </button>
+        );
+      }) : (
+        <div style={{ textAlign:"center", padding:"48px 20px" }}>
+          <p style={{ fontSize:48, marginBottom:12 }}>🍄</p>
+          <p style={{ fontSize:15, color:"#5a8c6a", marginBottom:6 }}>{search||filterEd!=="all"?"該当なし":"まだ記録がありません"}</p>
+          <p style={{ fontSize:13, color:"#aaa" }}>見つけたきのこを追加してみよう</p>
+        </div>
+      )}
+    </div>
+  );
+
+  // ── DETAIL ──
+  if (view==="detail" && cur) {
+    const ed = edInfo(cur.edibility);
+    return (
+      <div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:8, marginBottom:12 }}>
+          <button onClick={()=>setView("list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ 一覧へ</button>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={()=>openEdit(cur)} style={{ padding:"7px 14px", background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>編集</button>
+            <button onClick={()=>doDelete(cur.id)} style={{ padding:"7px 14px", background:"rgba(192,57,43,0.1)", border:"1px solid rgba(192,57,43,0.3)", borderRadius:20, color:"#c0392b", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>削除</button>
+          </div>
+        </div>
+
+        {cur.photo && <div style={{ borderRadius:14, overflow:"hidden", marginBottom:12 }}>
+          <img src={cur.photo} alt={cur.name} style={{ width:"100%", maxHeight:280, objectFit:"cover", display:"block" }}/>
+        </div>}
+
+        <div style={CARD}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+            <p style={{ fontSize:20, fontWeight:"bold", color:"#1a3a2a", margin:0, flex:1 }}>{cur.name}</p>
+            <span style={{ fontSize:24 }}>{ed.emoji}</span>
+            <span style={{ fontSize:13, fontWeight:"bold", color:ed.color, background:`${ed.color}18`, borderRadius:20, padding:"4px 12px" }}>{ed.label}</span>
+          </div>
+          {cur.species && <p style={{ fontSize:14, color:"#5a8c6a", margin:"0 0 6px" }}>🍄 {cur.species}</p>}
+          {cur.location && <p style={{ fontSize:13, color:"#2d6a4f", margin:"0 0 4px" }}>📍 {cur.location}</p>}
+          {cur.gps && <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 4px" }}>🛰 {cur.gps.lat.toFixed(5)}, {cur.gps.lng.toFixed(5)}</p>}
+          {cur.note && <p style={{ fontSize:14, color:"#333", margin:"8px 0 0", lineHeight:1.7 }}>{cur.note}</p>}
+          <p style={{ fontSize:11, color:"#aaa", margin:"8px 0 0" }}>登録：{cur.createdAt}　更新：{cur.updatedAt}</p>
+        </div>
+
+        {/* 食毒注意 */}
+        {(cur.edibility==="toxic"||cur.edibility==="unknown"||cur.edibility==="inedible") && <div style={{ background:"rgba(192,57,43,0.06)", border:"1.5px solid rgba(192,57,43,0.25)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
+          <p style={{ fontSize:14, color:"#c0392b", margin:0, lineHeight:1.7, fontWeight:"bold" }}>
+            ⚠️ 食毒の最終判断は必ず専門家にご確認ください。<br/>
+            <span style={{ fontSize:12, fontWeight:"normal" }}>このアプリの情報は参考値です。</span>
+          </p>
+        </div>}
+      </div>
+    );
+  }
+
+  // ── FORM ──
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:14 }}>
+        <button onClick={()=>setView(editId?"detail":"list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ 戻る</button>
+        <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{editId?"きのこを編集":"きのこを追加"}</h2>
+      </div>
+
+      <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={onPhoto}/>
+
+      <div style={CARD}>
+        {/* 写真 */}
+        {photo
+          ? <div style={{ position:"relative", marginBottom:14 }}>
+              <img src={photo} alt="" style={{ width:"100%", maxHeight:240, objectFit:"cover", borderRadius:10, display:"block" }}/>
+              <button onClick={()=>fileRef.current.click()} style={{ position:"absolute", bottom:8, right:8, background:"rgba(0,0,0,0.6)", border:"1px solid #fff", borderRadius:8, color:"#fff", fontSize:12, padding:"5px 10px", cursor:"pointer", fontFamily:"inherit" }}>📷 撮り直す</button>
+            </div>
+          : <button onClick={()=>fileRef.current.click()} style={{ width:"100%", padding:"32px", background:"rgba(45,106,79,0.04)", border:"2px dashed rgba(45,106,79,0.3)", borderRadius:12, color:"#2d6a4f", fontSize:15, cursor:"pointer", fontFamily:"inherit", textAlign:"center", display:"block", marginBottom:14, fontWeight:"bold" }}>
+              📷　写真を撮影 / ライブラリから選択
+            </button>
+        }
+
+        <span style={LBL}>きのこの名前（必須）：</span>
+        <input style={{ ...INP, marginBottom:12 }} type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="例: シイタケ、名前不明のきのこ"/>
+
+        <span style={LBL}>種類（わかる場合）：</span>
+        <select value={species} onChange={e=>setSpecies(e.target.value)} style={{ ...INP, marginBottom:12, fontSize:14, appearance:"none" }}>
+          <option value="">選択してください</option>
+          {MUSHROOM_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+        </select>
+
+        <span style={LBL}>食毒：</span>
+        <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+          {EDIBILITY.map(e=>(
+            <button key={e.value} onClick={()=>setEdibility(e.value)}
+              style={{ flex:1, minWidth:80, padding:"10px 6px", borderRadius:10, border:`2px solid ${edibility===e.value?e.color:"rgba(45,106,79,0.2)"}`, background:edibility===e.value?`${e.color}18`:"transparent", color:edibility===e.value?e.color:"#5a8c6a", fontSize:13, cursor:"pointer", fontFamily:"inherit", fontWeight:edibility===e.value?"bold":"normal", textAlign:"center" }}>
+              {e.emoji}<br/>{e.label}
+            </button>
+          ))}
+        </div>
+
+        <span style={LBL}>発見場所：</span>
+        <input style={{ ...INP, marginBottom:12 }} type="text" value={location} onChange={e=>setLocation(e.target.value)} placeholder="例: 住吉公園の松林"/>
+
+        {/* GPS */}
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom: gps?6:12 }}>
+          <span style={{ ...LBL, marginBottom:0, flex:1 }}>📍 位置情報：</span>
+          <button onClick={getGPSNow} style={{ fontSize:12, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:6, padding:"5px 12px", cursor:"pointer", fontFamily:"inherit" }}>
+            {gpsLoading?"取得中...":gps?"📍 再取得":"📍 現在地を取得"}
+          </button>
+        </div>
+        {gps && <div style={{ background:"rgba(45,106,79,0.06)", borderRadius:8, padding:"6px 12px", marginBottom:12, display:"flex", justifyContent:"space-between" }}>
+          <span style={{ fontSize:11, color:"#2d6a4f" }}>✅ {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}</span>
+          <button onClick={()=>setGps(null)} style={{ fontSize:11, color:"#ff8080", background:"none", border:"none", cursor:"pointer" }}>✕</button>
+        </div>}
+
+        <span style={LBL}>メモ：</span>
+        <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="色・形・香り・発見状況など..." style={{ ...INP, resize:"vertical", minHeight:80, fontSize:14 }}/>
+      </div>
+
+      <div style={{ background:"rgba(192,57,43,0.06)", border:"1.5px solid rgba(192,57,43,0.2)", borderRadius:10, padding:"10px 14px", marginBottom:12 }}>
+        <p style={{ fontSize:12, color:"#c0392b", margin:0, lineHeight:1.7 }}>⚠️ 食毒の最終判断は必ず専門家にご確認ください</p>
+      </div>
+
+      <button style={PRI} onClick={doSave}>🍄　{editId?"変更を保存する":"図鑑に追加する"}</button>
+      <button style={GHO} onClick={()=>setView(editId?"detail":"list")}>← 戻る</button>
+    </div>
+  );
+}
+
 // ================================================================
 // HELP & TERMS APP
 // ================================================================
@@ -3017,6 +3307,7 @@ export default function App() {
   const [pendingTreeName, setPendingTreeName] = useState(null);
   const [pendingDist, setPendingDist] = useState(null); // 樹高→枝張り距離引き継ぎ
   const [mapSelectedId, setMapSelectedId] = useState(null);
+  const [mushrooms, setMushrooms] = useState([]);
   const prof = loadProfile();
 
   // IndexedDB から読み込み（起動時）
@@ -3026,6 +3317,9 @@ export default function App() {
       const loaded = await loadTreesDB();
       loaded.sort((a, b) => parseDate(b.createdAt) - parseDate(a.createdAt));
       setTrees(loaded);
+      const km = await loadMushroomsDB();
+      km.sort((a,b)=>parseDate(b.createdAt)-parseDate(a.createdAt));
+      setMushrooms(km);
       setDbReady(true);
     })();
   }, []);
@@ -3079,13 +3373,48 @@ export default function App() {
           {dbReady && <>
           {menuBtn("📋","大きな木のアルバム","写真・測定値を記録・管理・PDF出力",trees.length>0?`${trees.length}本`:null,()=>setMode("carte"))}
           {menuBtn("🗺️","大きな木の地図","記録した木の場所を地図で確認",trees.filter(t=>t.gps).length>0?`${trees.filter(t=>t.gps).length}本`:null,()=>setMode("map"))}
-          {menuBtn("📐","樹高を測定する","カメラで根元・梢を2点ロック",null,()=>{ setPendingTreeId(null); setMode("height"); })}
-          {menuBtn("🌿","枝張りを測定する","カメラで左端・右端を2点ロック",null,()=>{ setPendingTreeId(null); setMode("spread"); })}
-          {menuBtn("🌲","幹周りを測定する","カメラで幹の左右を2点ロック",null,()=>{ setPendingTreeId(null); setMode("trunk"); })}
+          {menuBtn("📏","木の大きさを測る","樹高・枝張り・幹周りを測定する",null,()=>setMode("measure"))}
+          {menuBtn("🍄","Myきのこ図鑑","見つけたきのこを記録・コレクション",mushrooms.length>0?`${mushrooms.length}種`:null,()=>setMode("kinoko"))}
           {menuBtn("📖","使い方・利用規約","測定方法・データ管理・免責事項",null,()=>setMode("help"))}
           </>}
         </div>}
 
+        {mode==="measure"&&<div>
+          <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:20 }}>
+            <button onClick={()=>setMode(null)} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
+            <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>📏 木の大きさを測る</h2>
+          </div>
+          <div style={{ ...CARD, marginBottom:14 }}>
+            <p style={{ fontSize:13, color:"#5a8c6a", margin:"0 0 14px", lineHeight:1.8 }}>
+              測定したい項目を選んでください。<br/>
+              新しく木を登録する場合は「大きな木のアルバム」から「＋ 新しい木を登録」をお使いください。
+            </p>
+          </div>
+          <button onClick={()=>{ setPendingTreeId(null); setMode("height"); }} style={{ width:"100%", padding:"20px 16px", background:"rgba(255,255,255,0.97)", border:"1.5px solid rgba(45,106,79,0.15)", borderRadius:16, cursor:"pointer", marginBottom:10, display:"flex", alignItems:"center", gap:14, fontFamily:"inherit", textAlign:"left", boxShadow:"0 3px 12px rgba(45,106,79,0.1)" }}>
+            <span style={{ fontSize:34 }}>📐</span>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:15, fontWeight:"bold", color:"#1b4332", margin:0 }}>樹高を測定する</p>
+              <p style={{ fontSize:12, color:"#52b788", margin:"3px 0 0" }}>カメラで梢・根元を2点タップ</p>
+            </div>
+            <span style={{ color:"#2d6a4f", fontSize:20, fontWeight:"bold" }}>›</span>
+          </button>
+          <button onClick={()=>{ setPendingTreeId(null); setMode("spread"); }} style={{ width:"100%", padding:"20px 16px", background:"rgba(255,255,255,0.97)", border:"1.5px solid rgba(45,106,79,0.15)", borderRadius:16, cursor:"pointer", marginBottom:10, display:"flex", alignItems:"center", gap:14, fontFamily:"inherit", textAlign:"left", boxShadow:"0 3px 12px rgba(45,106,79,0.1)" }}>
+            <span style={{ fontSize:34 }}>🌿</span>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:15, fontWeight:"bold", color:"#1b4332", margin:0 }}>枝張りを測定する</p>
+              <p style={{ fontSize:12, color:"#52b788", margin:"3px 0 0" }}>カメラで枝の左端・右端を2点タップ</p>
+            </div>
+            <span style={{ color:"#2d6a4f", fontSize:20, fontWeight:"bold" }}>›</span>
+          </button>
+          <button onClick={()=>{ setPendingTreeId(null); setMode("trunk"); }} style={{ width:"100%", padding:"20px 16px", background:"rgba(255,255,255,0.97)", border:"1.5px solid rgba(45,106,79,0.15)", borderRadius:16, cursor:"pointer", marginBottom:10, display:"flex", alignItems:"center", gap:14, fontFamily:"inherit", textAlign:"left", boxShadow:"0 3px 12px rgba(45,106,79,0.1)" }}>
+            <span style={{ fontSize:34 }}>🌲</span>
+            <div style={{ flex:1 }}>
+              <p style={{ fontSize:15, fontWeight:"bold", color:"#1b4332", margin:0 }}>幹周りを測定する</p>
+              <p style={{ fontSize:12, color:"#52b788", margin:"3px 0 0" }}>カメラで幹の左端・右端を2点タップ</p>
+            </div>
+            <span style={{ color:"#2d6a4f", fontSize:20, fontWeight:"bold" }}>›</span>
+          </button>
+        </div>}
         {mode==="height"&&<HeightApp prof={prof} trees={trees} pendingTreeId={pendingTreeId} pendingTreeName={pendingTreeName}
           onSaveTree={(nt,eid,meas) => { if (pendingTreeId) { updateTrees(trees.map(t => t.id===pendingTreeId ? { ...t, measurements:{ ...t.measurements, ...meas }, updatedAt:today() } : t)); setPendingTreeId(null); setPendingTreeName(null); setMode("carte"); } else { onSaveTree(nt,eid,meas); } }}
           onSaveAndMeasureSpread={pendingTreeId ? (distStr, heightStr) => {
@@ -3101,6 +3430,7 @@ export default function App() {
         {mode==="trunk"&&<TrunkApp prof={prof} trees={trees} pendingTreeId={pendingTreeId} pendingTreeName={pendingTreeName} onSaveTree={(nt,eid,meas) => { if (pendingTreeId) { updateTrees(trees.map(t => t.id===pendingTreeId ? { ...t, measurements:{ ...t.measurements, ...meas }, updatedAt:today() } : t)); setPendingTreeId(null); setPendingTreeName(null); setMode("carte"); } else { onSaveTree(nt,eid,meas); } }} onBack={()=>setMode(null)}/>}
         {mode==="carte"&&<CarteApp trees={trees} onUpdate={updateTrees} onBack={()=>{ setMapSelectedId(null); setMode(null); }} onMeasureHeight={onMeasureHeight} onMeasureSpread={onMeasureSpread} onMeasureTrunk={onMeasureTrunk} initialSelectedId={mapSelectedId}/>}
         {mode==="map"&&<MapApp trees={trees} onSelectTree={onSelectTree} onBack={()=>setMode(null)}/>}
+        {mode==="kinoko"&&<KinokoApp onBack={()=>setMode(null)}/>}
         {mode==="help"&&<HelpApp onBack={()=>setMode(null)}/>}
       </div>
     </div>
