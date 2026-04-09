@@ -386,7 +386,7 @@ function DistPanel({ bodyH, setBodyH, eyeH, setEyeH, dist, setDist, distMode, se
           </div>}
           <span style={LBL}>歩数：</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-            <input style={INP} type="number" value={walkCount} onChange={e => hw(e.target.value)} placeholder="例: 20" />
+            <input style={INP} type="number" value={walkCount} onChange={e => hw(e.target.value)} placeholder="例: 3" />
             <span style={{ color: GRN, minWidth: 24 }}>歩</span>
           </div>
           {dist && stride && <div style={{ background: "rgba(126,203,161,0.08)", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: GRN }}>
@@ -1426,7 +1426,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
   const hdr = (title, hint) => (
     <div style={{ paddingTop:8, marginBottom:14 }}>
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom: hint ? 6 : 0 }}>
-        <button onClick={step===0?onBack:prev} style={{ background:"none", border:"none", color:"#2d6a4f", fontSize:22, cursor:"pointer", padding:0 }}>‹</button>
+        <button onClick={step===0?onBack:prev} style={{ background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.3)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ 戻る</button>
         <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{title}</h2>
       </div>
       {hint && <div style={{ background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.2)", borderRadius:8, padding:"7px 12px", marginLeft:32 }}>
@@ -1882,7 +1882,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
       {view==="list"&&<>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:8, marginBottom:14 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
+            <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ メニュー</button>
             <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>大きな木のアルバム</h2>
           </div>
           <div style={{ display:"flex", gap:6 }}>
@@ -2054,7 +2054,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
       {/* FORM */}
       {view==="form"&&<>
         <div style={{ display:"flex", alignItems:"center", gap:12, paddingTop:8, marginBottom:14 }}>
-          <button onClick={()=>setView(editing?"detail":"list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ {editing?"記録へ":"一覧へ"}</button>
+          <button onClick={()=>setView(editing?"detail":"list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ {editing?"記録へ":"一覧へ"}</button>
           <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{editing?"記録を編集":"新しい木を登録"}</h2>
         </div>
         <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={onPhoto} />
@@ -2161,7 +2161,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
       {view==="detail"&&cur&&<>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:8, marginBottom:14 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-            <button onClick={()=>setView("list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ 一覧へ</button>
+            <button onClick={()=>setView("list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ 一覧へ</button>
             <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{cur.name}</h2>
           </div>
           <div style={{ display:"flex", gap:8 }}>
@@ -2718,7 +2718,7 @@ function KinokoApp({ onBack }) {
     <div>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:8, marginBottom:14 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
+          <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ メニュー</button>
           <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>🍄 Myきのこ図鑑</h2>
         </div>
         <button onClick={openNew} style={{ padding:"8px 14px", background:"#2d6a4f", border:"none", borderRadius:20, color:"#fff", fontSize:13, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>＋ 追加</button>
@@ -2784,7 +2784,7 @@ function KinokoApp({ onBack }) {
     return (
       <div>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", paddingTop:8, marginBottom:12 }}>
-          <button onClick={()=>setView("list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ 一覧へ</button>
+          <button onClick={()=>setView("list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ 一覧へ</button>
           <div style={{ display:"flex", gap:8 }}>
             <button onClick={()=>openEdit(cur)} style={{ padding:"7px 14px", background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>編集</button>
             <button onClick={()=>doDelete(cur.id)} style={{ padding:"7px 14px", background:"rgba(192,57,43,0.1)", border:"1px solid rgba(192,57,43,0.3)", borderRadius:20, color:"#c0392b", fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>削除</button>
@@ -2823,7 +2823,7 @@ function KinokoApp({ onBack }) {
   return (
     <div>
       <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:14 }}>
-        <button onClick={()=>setView(editId?"detail":"list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ 戻る</button>
+        <button onClick={()=>setView(editId?"detail":"list")} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ 戻る</button>
         <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>{editId?"きのこを編集":"きのこを追加"}</h2>
       </div>
 
@@ -2907,7 +2907,7 @@ function HelpApp({ onBack }) {
   return (
     <div>
       <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:16 }}>
-        <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
+        <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ メニュー</button>
         <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>使い方・利用規約</h2>
       </div>
 
@@ -3200,7 +3200,7 @@ out body 50;`;
   return (
     <div>
       <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:12 }}>
-        <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
+        <button onClick={onBack} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ メニュー</button>
         <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>大きな木の地図</h2>
       </div>
       {/* 近くの巨木検索 */}
@@ -3381,7 +3381,7 @@ export default function App() {
 
         {mode==="measure"&&<div>
           <div style={{ display:"flex", alignItems:"center", gap:10, paddingTop:8, marginBottom:20 }}>
-            <button onClick={()=>setMode(null)} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:20, color:"#2d6a4f", fontSize:13, cursor:"pointer", padding:"6px 12px", fontFamily:"inherit" }}>‹ メニュー</button>
+            <button onClick={()=>setMode(null)} style={{ display:"flex", alignItems:"center", gap:4, background:"rgba(45,106,79,0.12)", border:"1.5px solid rgba(45,106,79,0.35)", borderRadius:20, color:"#1a4a2a", fontSize:16, cursor:"pointer", padding:"10px 18px", fontFamily:"inherit", fontWeight:"bold" }}>‹ メニュー</button>
             <h2 style={{ fontSize:17, color:"#2d6a4f", margin:0 }}>📏 木の大きさを測る</h2>
           </div>
           <div style={{ ...CARD, marginBottom:14 }}>
