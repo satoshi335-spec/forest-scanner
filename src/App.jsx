@@ -1888,22 +1888,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
           <div style={{ display:"flex", gap:6 }}>
             {trees.length>0&&<button onClick={() => setShowPdf(true)} style={{ fontSize:12, color:GRN, background:"rgba(45,106,79,0.08)", border:`1.5px solid rgba(45,106,79,0.3)`, borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>📄 PDF</button>}
             <button onClick={() => setShowExport(true)} style={{ fontSize:12, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:`1.5px solid rgba(45,106,79,0.3)`, borderRadius:8, padding:"6px 10px", cursor:"pointer", fontFamily:"inherit" }}>💾 バックアップ</button>
-            <input ref={importRef} type="file" accept=".json" style={{ display:"none" }} onChange={async e => {
-              const f = e.target.files[0]; if (!f) return;
-              try {
-                const text = await f.text();
-                const data = JSON.parse(text);
-                if (!Array.isArray(data)) throw new Error("形式エラー");
-                if (!window.confirm(`${data.length}本のデータをインポートしますか？\n既存データと合わせて保存されます。`)) return;
-                // 既存IDと重複しないものだけ追加（IDが同じなら上書き）
-                const merged = [...data, ...trees.filter(t => !data.find(d => d.id === t.id))];
-                onUpdate(merged);
-                alert(`✅ ${data.length}本をインポートしました`);
-              } catch(err) {
-                alert("❌ インポート失敗: ファイルの形式が正しくありません");
-              }
-              e.target.value = "";
-            }} />
+
           </div>
         </div>
 
@@ -3329,6 +3314,29 @@ export default function App() {
   const prof = loadProfile();
 
   // IndexedDB から読み込み（起動時）
+  useEffect(() => {
+    // PWA manifest & アイコン設定
+    const setHead = () => {
+      if (!document.querySelector('link[rel="manifest"]')) {
+        const m = document.createElement('link');
+        m.rel = 'manifest'; m.href = '/manifest.json';
+        document.head.appendChild(m);
+      }
+      if (!document.querySelector('link[rel="apple-touch-icon"]')) {
+        const i = document.createElement('link');
+        i.rel = 'apple-touch-icon'; i.href = '/icon-180.png';
+        document.head.appendChild(i);
+      }
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (!meta) {
+        const t = document.createElement('meta');
+        t.name = 'theme-color'; t.content = '#2d6a4f';
+        document.head.appendChild(t);
+      }
+    };
+    setHead();
+  }, []);
+
   useEffect(() => {
     (async () => {
       await migrateFromLocalStorage();
