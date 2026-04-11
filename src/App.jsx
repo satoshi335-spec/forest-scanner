@@ -230,9 +230,48 @@ const TREE_TYPES = [
 // ================================================================
 // CAMERA HOOK
 // ================================================================
+// カメラのFOVをiPhoneの焦点距離から自動取得
+async function detectCameraFOV() {
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode:"environment" } });
+    const track = s.getVideoTracks()[0];
+    const settings = track.getSettings();
+    const caps = track.getCapabilities?.() || {};
+    s.getTracks().forEach(t => t.stop());
+    // focalLength が取得できる場合（一部Android）
+    if (settings.focalLength && caps.focalLength) {
+      const sensorW = caps.focalLength?.max ? 6.17 : 4.8; // 概算センサー幅mm
+      const fovH = 2 * Math.atan(sensorW / 2 / settings.focalLength) * 180 / Math.PI;
+      return { hFov: +fovH.toFixed(1), vFov: +(fovH * 0.75).toFixed(1), source: "sensor" };
+    }
+    // 解像度から推定（iPhone標準カメラ近似）
+    const w = settings.width || 1920, h = settings.height || 1080;
+    const aspect = w / h;
+    // iPhone 広角: 水平約69°、縦約54°
+    const hFov = aspect > 1.5 ? 69 : 60;
+    const vFov = Math.round(hFov / aspect);
+    return { hFov, vFov, source: "estimated" };
+  } catch {
+    return { hFov: 60, vFov: 45, source: "default" };
+  }
+}
+
+// FOVをlocalStorageにキャッシュ
+function getCachedFOV() {
+  try {
+    const c = JSON.parse(localStorage.getItem("camera_fov") || "null");
+    if (c && Date.now() - c.ts < 7 * 24 * 3600000) return c;
+  } catch {}
+  return null;
+}
+function setCachedFOV(fov) {
+  try { localStorage.setItem("camera_fov", JSON.stringify({ ...fov, ts: Date.now() })); } catch {}
+}
+
 function useCameraAndSensor(onOrient) {
   const [sensorOn, setSensorOn] = useState(false);
   const [cameraOn, setCameraOn] = useState(false);
+  const [fov, setFov] = useState(getCachedFOV() || { hFov:60, vFov:45, source:"default" });
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   useEffect(() => () => { window.removeEventListener("deviceorientation", onOrient); stopCamera(); }, [onOrient]);
@@ -249,6 +288,12 @@ function useCameraAndSensor(onOrient) {
       streamRef.current = s;
       if (videoRef.current) { videoRef.current.srcObject = s; await videoRef.current.play(); }
       setCameraOn(true);
+      // FOV検出（キャッシュなければ）
+      if (!getCachedFOV()) {
+        const detected = await detectCameraFOV();
+        setCachedFOV(detected);
+        setFov(detected);
+      }
     } catch { setCameraOn(false); }
   };
   const stopCamera = () => {
@@ -256,7 +301,7 @@ function useCameraAndSensor(onOrient) {
     streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null;
     setCameraOn(false); setSensorOn(false);
   };
-  return { sensorOn, cameraOn, videoRef, startAll, stopCamera };
+  return { sensorOn, cameraOn, videoRef, startAll, stopCamera, fov };
 }
 
 // ================================================================
@@ -716,7 +761,7 @@ function HeightApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
     if (!canCalc) return; stopCamera();
     const d = parseFloat(dist), e = parseFloat(eyeH);
     // タップ方式：Y座標比率から角度を計算（カメラFOV縦 約45°）
-    const VFOV = 45;
+    const VFOV = fov?.vFov || 45;
     const topAngle = -(top - 0.5) * VFOV;   // 上タップ → 正の仰角
     const botAngle = -(bot - 0.5) * VFOV;   // 下タップ → 負の俯角
     const h = +(d * (Math.tan(topAngle * Math.PI/180) - Math.tan(botAngle * Math.PI/180)) + e).toFixed(1);
@@ -1384,9 +1429,34 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
   const [ageAuto, setAgeAuto] = useState(false);
   const [measDist, setMeasDist] = useState(""); // 樹高→枝張り距離引き継ぎ
   const [trunkSteps, setTrunkSteps] = useState(""); // 幹周り測定までの歩数
+
+  // 下書き自動保存
+  const DRAFT_KEY = "wizard_draft";
+  const saveDraft = (data) => { try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); } catch {} };
+  const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch {} };
+
+  // 起動時に下書きを復元
+  useEffect(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+      if (d && Date.now() - d.savedAt < 24 * 3600000) { // 24時間以内
+        if (window.confirm(`前回の入力途中のデータがあります。\n「${d.name || "名前未入力"}」\n\n復元しますか？`)) {
+          if (d.name) setName(d.name);
+          if (d.species) setSpecies(d.species);
+          if (d.location) setLocation(d.location);
+          if (d.note) setNote(d.note);
+          if (d.step) setStep(d.step > 2 ? 2 : d.step); // 写真ステップから再開
+        } else { clearDraft(); }
+      }
+    } catch {}
+  }, []);
   const fileRef = useRef();
 
-  const next = () => setStep(s => Math.min(s + 1, STEPS.length - 1));
+  const next = () => setStep(s => {
+    const ns = Math.min(s + 1, STEPS.length - 1);
+    saveDraft({ name, species, location, note, step: ns });
+    return ns;
+  });
   const prev = () => setStep(s => Math.max(s - 1, 0));
 
   const onPhoto = async e => {
@@ -1409,6 +1479,7 @@ function RegisterWizard({ prof, trees, onComplete, onBack }) {
       measurements: { height: height||"", spread: spread||"", trunk: trunk||"", age: age||"" },
       createdAt: today(), updatedAt: today()
     };
+    clearDraft();
     onComplete(t);
   };
 
@@ -1642,7 +1713,7 @@ function WizardMeasHeight({ prof, trunkSteps, onMeasured, onSkip }) {
   const doCalc = () => {
     if (!canCalc) return;
     const d = parseFloat(dist), e = parseFloat(eyeH);
-    const VFOV = 45;
+    const VFOV = fov?.vFov || 45;
     const topA = -(top - 0.5) * VFOV;
     const botA = -(bot - 0.5) * VFOV;
     const h = +(d * (Math.tan(topA*Math.PI/180) - Math.tan(botA*Math.PI/180)) + e).toFixed(1);
@@ -1743,7 +1814,7 @@ function WizardMeasSpread({ prof, initialDist, onMeasured, onSkip }) {
 
   const doCalc = () => {
     if (!canCalc) return;
-    const FOV = 60;
+    const FOV = fov?.hFov || 60;
     const lA = (left - 0.5) * FOV;
     const rA = (right - 0.5) * FOV;
     const s = +(parseFloat(dist) * (Math.tan(Math.abs(lA)*Math.PI/180) + Math.tan(Math.abs(rA)*Math.PI/180))).toFixed(1);
@@ -1794,7 +1865,7 @@ function WizardMeasTrunk({ prof, onMeasured, onSkip }) {
 
   const doCalc = () => {
     if (!canCalc) return;
-    const FOV = 60;
+    const FOV = fov?.hFov || 60;
     const lA = (left - 0.5) * FOV;
     const rA = (right - 0.5) * FOV;
     const diamM = +(parseFloat(dist) * (Math.tan(Math.abs(lA)*Math.PI/180) + Math.tan(Math.abs(rA)*Math.PI/180))).toFixed(3);
@@ -1838,11 +1909,19 @@ function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasu
   const [selected, setSelected] = useState(initialSelectedId ? trees.find(t=>t.id===initialSelectedId)||null : null);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState("date_desc");
   const [showPdf, setShowPdf] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const importRef = useRef();
   const [previewImage, setPreviewImage] = useState(null); // 画像プレビュー
   const [osmModal, setOsmModal] = useState(null); // OSM登録モーダル
+  const [visitModal, setVisitModal] = useState(false); // 再訪記録モーダル
+  const [visitPhoto, setVisitPhoto] = useState(null);
+  const [visitNote, setVisitNote] = useState("");
+  const [visitTrunk, setVisitTrunk] = useState("");
+  const [visitHeight, setVisitHeight] = useState("");
+  const [visitCondition, setVisitCondition] = useState("良好");
+  const visitPhotoRef = useRef();
   const fileRef = useRef();
   const detailPhotoRef = useRef();
   const [photo, setPhoto] = useState(null);
@@ -1873,7 +1952,15 @@ function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasu
     };
     reader.readAsDataURL(f);
   };
-  const filtered = trees.filter(t => !search||t.name.includes(search)||t.species?.includes(search)||t.location?.includes(search));
+  const filtered = (() => {
+    let list = trees.filter(t => !search||t.name.includes(search)||t.species?.includes(search)||t.location?.includes(search));
+    if (sortKey==="date_desc") list = [...list].sort((a,b) => parseDate(b.createdAt)-parseDate(a.createdAt));
+    else if (sortKey==="date_asc") list = [...list].sort((a,b) => parseDate(a.createdAt)-parseDate(b.createdAt));
+    else if (sortKey==="height_desc") list = [...list].sort((a,b) => parseFloat(b.measurements?.height||0)-parseFloat(a.measurements?.height||0));
+    else if (sortKey==="trunk_desc") list = [...list].sort((a,b) => parseFloat(b.measurements?.trunk||0)-parseFloat(a.measurements?.trunk||0));
+    else if (sortKey==="name") list = [...list].sort((a,b) => a.name.localeCompare(b.name, "ja"));
+    return list;
+  })();
   const cur = selected && trees.find(t=>t.id===selected.id);
 
   return (
@@ -1975,6 +2062,7 @@ function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasu
                 a.download = `ookina-ki-backup-${today()}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
+                try { localStorage.setItem("last_backup_date", new Date().toISOString()); } catch {}
               }} style={{ width:"100%", padding:"11px", background:"#1a5c3f", border:"none", borderRadius:10, color:"#fff", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
                 📦 まとめてダウンロード
               </button>
@@ -2110,12 +2198,24 @@ function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasu
           <span style={LBL}>メモ：</span><textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="この木の特徴・感想など..." style={{ ...INP, resize:"vertical", minHeight:64, fontSize:14 }} />
         </div>
         <div style={CARD}>
-          <p style={{ fontSize:13, color:"#2d6a4f", marginBottom:12 }}>測定値 <span style={{ fontSize:10, color:"#5a9070" }}>（空欄でも可）</span></p>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+            <p style={{ fontSize:13, color:"#2d6a4f", margin:0, fontWeight:"bold" }}>測定値</p>
+            <span style={{ fontSize:11, color:"#5a9070" }}>空欄でも可</span>
+          </div>
+          {/* 案内板からの転記ヒント */}
+          <div style={{ background:"rgba(45,106,79,0.06)", border:"1.5px solid rgba(45,106,79,0.2)", borderRadius:10, padding:"10px 12px", marginBottom:14 }}>
+            <p style={{ fontSize:13, color:"#2d6a4f", margin:0, lineHeight:1.8, fontWeight:"bold" }}>
+              📋 案内板がある場合はそのまま入力できます
+            </p>
+            <p style={{ fontSize:12, color:"#5a8c6a", margin:"4px 0 0", lineHeight:1.7 }}>
+              幹周り・樹齢・樹高などが案内板に書かれている場合は直接入力してください。カメラ測定との併用も可能です。
+            </p>
+          </div>
 
           {/* 樹高 */}
           <div style={{ marginBottom:10 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-              <span style={{ ...LBL, marginBottom:0 }}>樹高（m）：</span>
+              <span style={{ ...LBL, marginBottom:0 }}>樹高（m）：<span style={{ fontSize:11, color:"#5a9070", fontWeight:"normal" }}>　直接入力 or カメラ測定</span></span>
               <button onClick={async () => { const saved = await doSave({ skipNav: true }); if (saved) onMeasureHeight(saved.id); }} style={{ fontSize:11, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:6, padding:"3px 10px", cursor:"pointer", fontFamily:"inherit" }}>📐 今すぐ測定</button>
             </div>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}><input style={{ ...INP, fontSize:20 }} type="number" value={height} onChange={e=>setHeight(e.target.value)} placeholder="未測定" /><span style={{ color:"#2d6a4f", minWidth:24, fontSize:13 }}>m</span></div>
@@ -2124,7 +2224,7 @@ function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasu
           {/* 枝張り */}
           <div style={{ marginBottom:10 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-              <span style={{ ...LBL, marginBottom:0 }}>枝張り・直径（m）：</span>
+              <span style={{ ...LBL, marginBottom:0 }}>枝張り（m）：<span style={{ fontSize:11, color:"#5a9070", fontWeight:"normal" }}>　直接入力 or カメラ測定</span></span>
               <button onClick={async () => { const saved = await doSave({ skipNav: true }); if (saved) onMeasureSpread(saved.id); }} style={{ fontSize:11, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:6, padding:"3px 10px", cursor:"pointer", fontFamily:"inherit" }}>🌿 今すぐ測定</button>
             </div>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}><input style={{ ...INP, fontSize:20 }} type="number" value={spread} onChange={e=>setSpread(e.target.value)} placeholder="未測定" /><span style={{ color:"#2d6a4f", minWidth:24, fontSize:13 }}>m</span></div>
@@ -2133,7 +2233,7 @@ function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasu
           {/* 幹周り */}
           <div style={{ marginBottom:10 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-              <span style={{ ...LBL, marginBottom:0 }}>幹周り（cm・地上1.3m）：</span>
+              <span style={{ ...LBL, marginBottom:0 }}>幹周り（cm・地上1.3m）：<span style={{ fontSize:11, color:"#5a9070", fontWeight:"normal" }}>　直接入力 or カメラ測定</span></span>
               <button onClick={async () => { const saved = await doSave({ skipNav: true }); if (saved) onMeasureTrunk(saved.id); }} style={{ fontSize:11, color:"#2d6a4f", background:"rgba(45,106,79,0.08)", border:"1px solid rgba(45,106,79,0.25)", borderRadius:6, padding:"3px 10px", cursor:"pointer", fontFamily:"inherit" }}>🌲 今すぐ測定</button>
             </div>
             <div style={{ display:"flex", gap:8, alignItems:"center" }}><input style={{ ...INP, fontSize:20 }} type="number" value={trunk} onChange={e=>{
@@ -2141,19 +2241,19 @@ function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasu
               if (e.target.value && species) { setAge(estimateAge(parseFloat(e.target.value), species)+""); setAgeAuto(true); }
               else if (!e.target.value) { if (ageAuto) setAge(""); setAgeAuto(false); }
             }} placeholder="例: 250" /><span style={{ color:"#2d6a4f", minWidth:28, fontSize:13 }}>cm</span></div>
-            <p style={{ fontSize:11, color:"#5a8c6a", margin:"4px 0 0" }}>※ メジャーで測った幹の周囲の長さをcmで入力（例：大きな木は100〜500cm）</p>
+            <p style={{ fontSize:11, color:"#5a8c6a", margin:"4px 0 0" }}>※ 案内板の幹周り・胸高周囲をそのまま入力。メジャー実測値も可。（例：300cm）</p>
           </div>
           {/* 推定樹齢 */}
           <div style={{ marginBottom:10 }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-              <span style={{ ...LBL, marginBottom:0 }}>推定樹齢：</span>
-              {ageAuto && <span style={{ fontSize:11, color:GRN, background:"rgba(255,209,102,0.15)", border:"1px solid rgba(255,209,102,0.3)", borderRadius:20, padding:"2px 8px" }}>🤖 自動推定</span>}
+              <span style={{ ...LBL, marginBottom:0 }}>樹齢（年）：<span style={{ fontSize:11, color:"#5a9070", fontWeight:"normal" }}>　案内板・自動推定・直接入力</span></span>
+              {ageAuto && <span style={{ fontSize:11, color:GRN, borderRadius:20, padding:"2px 8px", background:"rgba(45,106,79,0.1)", border:"1px solid rgba(45,106,79,0.2)" }}>🤖 自動推定</span>}
             </div>
             <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:4 }}>
-              <input style={{ ...INP, fontSize:20, borderColor: ageAuto ? "rgba(255,209,102,0.5)" : "rgba(126,203,161,0.4)" }}
+              <input style={{ ...INP, fontSize:20 }}
                 type="number" value={age}
                 onChange={e=>{ setAge(e.target.value); setAgeAuto(false); }}
-                placeholder="未測定（直接入力可）" />
+                placeholder="例: 300（案内板の数字をそのまま）" />
               <span style={{ color:"#2d6a4f", minWidth:28, fontSize:13 }}>年</span>
             </div>
             {ageAuto && trunk && species && <p style={{ fontSize:11, color:"#5a8c6a", margin:"0 0 6px" }}>
@@ -2255,9 +2355,41 @@ function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasu
         </div>
         {/* OSM登録ボタン */}
         <button onClick={() => { const r = openOSMEditor(cur); if (r) setOsmModal(r); }}
-          style={{ width:"100%", padding:"13px", background:"rgba(116,179,206,0.12)", border:"1.5px solid #74b3ce", borderRadius:12, color:"#2a4a7a", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          style={{ width:"100%", padding:"13px", background:"rgba(116,179,206,0.12)", border:"1.5px solid #74b3ce", borderRadius:12, color:"#2a4a7a", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold", marginBottom:8, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
           🗺️　OpenStreetMapに登録する
         </button>
+        {/* 再訪記録ボタン */}
+        <button onClick={() => { setVisitPhoto(null); setVisitNote(""); setVisitTrunk(""); setVisitHeight(""); setVisitCondition("良好"); setVisitModal(true); }}
+          style={{ width:"100%", padding:"13px", background:"rgba(45,106,79,0.08)", border:"1.5px solid rgba(45,106,79,0.3)", borderRadius:12, color:"#2d6a4f", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          📅　再訪を記録する
+        </button>
+        {/* 過去の訪問記録一覧 */}
+        {cur.visits && cur.visits.length > 0 && <div style={CARD}>
+          <p style={{ fontSize:13, color:"#2d6a4f", fontWeight:"bold", marginBottom:10 }}>📅 訪問記録（{cur.visits.length}回）</p>
+          {[...cur.visits].reverse().map((v, i) => (
+            <div key={i} style={{ borderBottom:"1px solid rgba(45,106,79,0.1)", paddingBottom:12, marginBottom:12 }}>
+              <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+                {v.photo && <img src={v.photo} alt="" style={{ width:72, height:72, objectFit:"cover", borderRadius:8, flexShrink:0 }}/>}
+                <div style={{ flex:1 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+                    <p style={{ fontSize:13, fontWeight:"bold", color:"#1a3a2a", margin:0 }}>{v.date}</p>
+                    <span style={{ fontSize:12, padding:"2px 8px", borderRadius:20, background:
+                      v.condition==="良好"?"rgba(45,106,79,0.12)":
+                      v.condition==="注意"?"rgba(255,165,0,0.12)":
+                      "rgba(192,57,43,0.12)",
+                      color:v.condition==="良好"?"#2d6a4f":v.condition==="注意"?"#b8860b":"#c0392b"
+                    }}>{v.condition}</span>
+                  </div>
+                  <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:4 }}>
+                    {v.trunk && <span style={{ fontSize:12, color:BLUE }}>幹周り {v.trunk}cm</span>}
+                    {v.height && <span style={{ fontSize:12, color:GRN }}>樹高 {v.height}m</span>}
+                  </div>
+                  {v.note && <p style={{ fontSize:13, color:"#333", margin:0, lineHeight:1.7 }}>{v.note}</p>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>}
         {/* OSM登録モーダル */}
         {osmModal && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:200, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20 }}>
           <div style={{ background:"#fff", borderRadius:16, padding:24, width:"100%", maxWidth:360 }}>
@@ -2297,6 +2429,72 @@ function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasu
               style={{ width:"100%", padding:"12px", background:"none", border:"1.5px solid rgba(45,106,79,0.3)", borderRadius:12, color:"#2d6a4f", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
               キャンセル
             </button>
+          </div>
+        </div>}
+
+        {/* 再訪記録モーダル */}
+        <input ref={visitPhotoRef} type="file" accept="image/*" capture="environment" style={{ display:"none" }} onChange={async e => {
+          const f = e.target.files[0]; if (!f) return;
+          const r = new FileReader();
+          r.onload = async ev => { const res = await resizePhoto(ev.target.result, 800); setVisitPhoto(res); };
+          r.readAsDataURL(f);
+        }}/>
+        {visitModal && cur && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16, overflowY:"auto" }}>
+          <div style={{ background:"#fff", borderRadius:16, padding:20, width:"100%", maxWidth:380, margin:"auto" }}>
+            <p style={{ fontSize:17, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px", textAlign:"center" }}>📅 再訪を記録する</p>
+            <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 14px", textAlign:"center" }}>{cur.name}　{today()}</p>
+
+            {/* 写真 */}
+            {visitPhoto
+              ? <div style={{ position:"relative", marginBottom:12 }}>
+                  <img src={visitPhoto} alt="" style={{ width:"100%", maxHeight:200, objectFit:"cover", borderRadius:10, display:"block" }}/>
+                  <button onClick={() => setVisitPhoto(null)} style={{ position:"absolute", top:6, right:6, background:"rgba(0,0,0,0.6)", border:"none", borderRadius:6, color:"#fff", fontSize:12, padding:"4px 8px", cursor:"pointer" }}>✕</button>
+                </div>
+              : <button onClick={() => visitPhotoRef.current?.click()} style={{ width:"100%", padding:"20px", background:"rgba(45,106,79,0.04)", border:"2px dashed rgba(45,106,79,0.3)", borderRadius:10, color:"#2d6a4f", fontSize:14, cursor:"pointer", fontFamily:"inherit", marginBottom:12, display:"block", textAlign:"center", fontWeight:"bold" }}>
+                  📷　写真を追加（任意）
+                </button>
+            }
+
+            {/* 樹勢 */}
+            <p style={{ ...LBL, marginBottom:8 }}>樹勢（状態）：</p>
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              {[["良好","#2d6a4f"],["注意","#b8860b"],["衰退","#c0392b"]].map(([c, col]) => (
+                <button key={c} onClick={() => setVisitCondition(c)}
+                  style={{ flex:1, padding:"10px", borderRadius:10, border:`2px solid ${visitCondition===c?col:"rgba(45,106,79,0.2)"}`, background:visitCondition===c?`${col}15`:"transparent", color:visitCondition===c?col:"#5a8c6a", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:visitCondition===c?"bold":"normal" }}>
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            {/* 測定値（任意） */}
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              <div style={{ flex:1 }}>
+                <p style={LBL}>幹周り（cm）</p>
+                <input style={{ ...INP, fontSize:16 }} type="number" value={visitTrunk} onChange={e=>setVisitTrunk(e.target.value)} placeholder="例: 315"/>
+              </div>
+              <div style={{ flex:1 }}>
+                <p style={LBL}>樹高（m）</p>
+                <input style={{ ...INP, fontSize:16 }} type="number" value={visitHeight} onChange={e=>setVisitHeight(e.target.value)} placeholder="例: 20"/>
+              </div>
+            </div>
+
+            {/* メモ */}
+            <p style={LBL}>メモ・観察内容：</p>
+            <textarea value={visitNote} onChange={e=>setVisitNote(e.target.value)}
+              placeholder="樹勢の変化・病害虫・損傷・開花状況など..."
+              style={{ ...INP, resize:"vertical", minHeight:80, fontSize:14, marginBottom:14 }}/>
+
+            {/* 保存 */}
+            <button onClick={() => {
+              const visit = { date:today(), photo:visitPhoto, condition:visitCondition, trunk:visitTrunk, height:visitHeight, note:visitNote };
+              const updated = { ...cur, visits:[...(cur.visits||[]), visit], updatedAt:today() };
+              onUpdate(trees.map(t => t.id===cur.id ? updated : t));
+              setSelected(updated);
+              setVisitModal(false);
+            }} style={{ ...PRI, marginBottom:8 }}>
+              📅　記録を保存する
+            </button>
+            <button onClick={() => setVisitModal(false)} style={GHO}>キャンセル</button>
           </div>
         </div>}
 
@@ -2371,7 +2569,7 @@ async function saveTreeImage(tree) {
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  // ── 背景：写真を全面に表示 + フィルムカメラフィルター ──
+  // ── 背景：写真を全面に表示（加工なし）──
   if (tree.photo) {
     await new Promise(resolve => {
       const img = new Image();
@@ -2381,72 +2579,6 @@ async function saveTreeImage(tree) {
         const sw = img.width * scale, sh = img.height * scale;
         const sx = (W - sw) / 2, sy = (H - sh) / 2;
         ctx.drawImage(img, sx, sy, sw, sh);
-
-        // ── フィルムカメラフィルター ──
-        const imgData = ctx.getImageData(0, 0, W, H);
-        const d = imgData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          let r = d[i], g = d[i+1], b = d[i+2];
-
-          // ピクセルの位置（中央からの距離を正規化）
-          const px = (i / 4) % W;
-          const py = Math.floor((i / 4) / W);
-          // 縦長楕円でスポット領域を定義（横0.45、縦0.65の楕円）
-          const dx = (px - W * 0.5) / (W * 0.45);
-          const dy = (py - H * 0.48) / (H * 0.65);
-          const spotDist = Math.sqrt(dx * dx + dy * dy);
-          // 中央に近いほど1、外側に近いほど0（0.6〜1.2の間で滑らかに）
-          const spotFactor = Math.max(0, Math.min(1, 1 - (spotDist - 0.6) / 0.6));
-
-          // ① 彩度アップ（中央ほど強く・最大1.55、周辺1.2）
-          const avg = (r + g + b) / 3;
-          const sat = 1.2 + spotFactor * 0.35;
-          r = avg + (r - avg) * sat;
-          g = avg + (g - avg) * sat;
-          b = avg + (b - avg) * sat;
-
-          // ② 暖色シフト（フィルム感）
-          r = r * 1.08;
-          g = g * 1.02;
-          b = b * 0.90;
-
-          // ③ コントラスト（中央ほど高く・1.15〜1.28）
-          const cont = 1.15 + spotFactor * 0.13;
-          const mid = 128;
-          r = (r - mid) * cont + mid;
-          g = (g - mid) * cont + mid;
-          b = (b - mid) * cont + mid;
-
-          // ④ 中央を少し明るく（露出補正・最大+12）
-          const brightBoost = spotFactor * 12;
-          r += brightBoost;
-          g += brightBoost;
-          b += brightBoost;
-
-          // ⑤ ハイライトフェード
-          r = r > 225 ? 225 + (r - 225) * 0.35 : r;
-          g = g > 225 ? 225 + (g - 225) * 0.35 : g;
-          b = b > 225 ? 225 + (b - 225) * 0.35 : b;
-
-          d[i]   = Math.max(0, Math.min(255, r));
-          d[i+1] = Math.max(0, Math.min(255, g));
-          d[i+2] = Math.max(0, Math.min(255, b));
-        }
-        ctx.putImageData(imgData, 0, 0);
-
-        // ⑥ 縦長楕円ビネット（周辺暗化・中央の木を際立てる）
-        // Canvasのscaleで楕円ビネットを実現
-        ctx.save();
-        ctx.scale(1, 1.6); // 縦長に引き延ばし
-        const vig = ctx.createRadialGradient(W/2, H/2/1.6, H*0.2, W/2, H/2/1.6, H*0.72);
-        vig.addColorStop(0,   "rgba(0,0,0,0)");
-        vig.addColorStop(0.5, "rgba(0,0,0,0.04)");
-        vig.addColorStop(0.8, "rgba(0,0,0,0.22)");
-        vig.addColorStop(1,   "rgba(0,0,0,0.58)");
-        ctx.fillStyle = vig;
-        ctx.fillRect(0, 0, W, H/1.6);
-        ctx.restore();
-
         resolve();
       };
       img.onerror = resolve;
@@ -2472,44 +2604,59 @@ async function saveTreeImage(tree) {
   ctx.fillStyle = nameGrad;
   ctx.fillRect(0, H * 0.62, W, H * 0.38);
 
-  // ── 右側縦帯（測定値エリア）──
-  const sideGrad = ctx.createLinearGradient(W * 0.55, 0, W, 0);
-  sideGrad.addColorStop(0, "rgba(0,0,0,0)");
-  sideGrad.addColorStop(0.6, "rgba(0,0,0,0.12)");
-  sideGrad.addColorStop(1, "rgba(0,0,0,0.28)");
-  ctx.fillStyle = sideGrad;
-  ctx.fillRect(W * 0.55, 0, W * 0.45, H * 0.75);
-
-  // ── 測定値（右端・縦並び・控えめ） ──
+  // ── 測定値（右上・背景パネル付き・見やすく） ──
   const measItems = [
-    m.height ? { label: "樹高",   value: m.height, unit: "m",  color: "#7ecba1" } : null,
-    m.trunk  ? { label: "幹周り", value: m.trunk,  unit: "cm", color: "#74b3ce" } : null,
-    m.spread ? { label: "枝張り", value: m.spread, unit: "m",  color: "#7ecba1" } : null,
-    m.age    ? { label: "推定樹齢",value: m.age,   unit: "年", color: "#c4a882" } : null,
+    m.height ? { label: "樹高",    value: m.height, unit: "m",  color: "#7ecba1" } : null,
+    m.trunk  ? { label: "幹周り",  value: m.trunk,  unit: "cm", color: "#74b3ce" } : null,
+    m.spread ? { label: "枝張り",  value: m.spread, unit: "m",  color: "#7ecba1" } : null,
+    m.age    ? { label: "推定樹齢",value: m.age,    unit: "年", color: "#d4b896" } : null,
   ].filter(Boolean);
 
-  const RX = W - 52; // 右端X
-  let MY = 80;       // 測定値の開始Y
-  ctx.textAlign = "right";
-  ctx.shadowColor = "rgba(0,0,0,0.8)";
-  ctx.shadowBlur = 8;
+  if (measItems.length > 0) {
+    const rowH = 80;
+    const panelW = W * 0.44;
+    const panelH = measItems.length * rowH + 24;
+    const panelX = W - panelW - 16;
+    const panelY = 16;
 
-  measItems.forEach(item => {
-    // ラベル
-    ctx.font = "26px 'Hiragino Mincho ProN', Georgia, serif";
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
-    ctx.fillText(item.label, RX, MY);
-    MY += 34;
-    // 値＋単位
-    ctx.font = "bold 54px 'Hiragino Mincho ProN', Georgia, serif";
-    ctx.fillStyle = item.color;
-    ctx.fillText(item.value, RX - 36, MY);
-    ctx.font = "26px 'Hiragino Mincho ProN', Georgia, serif";
-    ctx.fillStyle = "rgba(255,255,255,0.7)";
-    ctx.fillText(item.unit, RX, MY);
-    MY += 56;
-  });
-  ctx.shadowBlur = 0;
+    // 背景パネル（半透明・角丸）
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.beginPath();
+    roundRect(ctx, panelX, panelY, panelW, panelH, 14);
+    ctx.fill();
+
+    // パネル枠線
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    roundRect(ctx, panelX, panelY, panelW, panelH, 14);
+    ctx.stroke();
+
+    const MFONT = "'Hiragino Mincho ProN', Georgia, serif";
+    const RX = W - 28;
+    let MY = panelY + 22;
+    ctx.textAlign = "right";
+    ctx.shadowColor = "rgba(0,0,0,0.9)";
+    ctx.shadowBlur = 6;
+
+    measItems.forEach(item => {
+      // ラベル（小さめ・白）
+      ctx.font = `22px ${MFONT}`;
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillText(item.label, RX, MY);
+      MY += 28;
+      // 値（大きく・色付き）
+      ctx.font = `bold 46px ${MFONT}`;
+      ctx.fillStyle = item.color;
+      ctx.fillText(item.value, RX - 32, MY);
+      // 単位
+      ctx.font = `22px ${MFONT}`;
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillText(item.unit, RX, MY);
+      MY += rowH - 28;
+    });
+    ctx.shadowBlur = 0;
+  }
 
   // ── 木の名前（右下・縦並び・控えめ・バラバラサイズ） ──
   const FONT = "'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif";
@@ -3363,6 +3510,19 @@ export default function App() {
       }
     };
     setHead();
+  }, []);
+
+  useEffect(() => {
+    // バックアップリマインド（30日以上経過で警告）
+    try {
+      const lastBackup = localStorage.getItem("last_backup_date");
+      if (lastBackup) {
+        const days = Math.floor((Date.now() - new Date(lastBackup).getTime()) / (1000 * 60 * 60 * 24));
+        if (days >= 30) {
+          setTimeout(() => alert(`⚠️ バックアップのお知らせ\n最後のバックアップから${days}日経過しています。\nアルバム画面の「💾 バックアップ」からJSONエクスポートを行ってください。`), 2000);
+        }
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
