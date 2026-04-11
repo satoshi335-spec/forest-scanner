@@ -1953,18 +1953,21 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
         {showPdf && <PdfModal trees={trees} onClose={() => setShowPdf(false)} />}
 
         {/* バックアップ・エクスポートモーダル */}
-        {showExport && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
-          <div style={{ background:"#fff", borderRadius:16, padding:24, width:"100%", maxWidth:360 }}>
-            <p style={{ fontSize:18, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 6px", textAlign:"center" }}>💾 バックアップ</p>
-            <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 20px", textAlign:"center" }}>{trees.length}本のデータ</p>
+        {showExport && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:20, overflowY:"auto" }}>
+          <div style={{ background:"#fff", borderRadius:16, padding:24, width:"100%", maxWidth:360, margin:"auto" }}>
+            <p style={{ fontSize:18, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px", textAlign:"center" }}>💾 バックアップ</p>
+            <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 16px", textAlign:"center" }}>
+              🌳 大きな木 {trees.length}本　🍄 きのこ図鑑 {mushrooms.length}種
+            </p>
 
-            {/* JSONエクスポート */}
+            {/* 一括JSONエクスポート */}
             <div style={{ background:"rgba(45,106,79,0.06)", border:"1.5px solid rgba(45,106,79,0.25)", borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
-              <p style={{ fontSize:14, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px" }}>📦 JSONエクスポート（完全バックアップ）</p>
-              <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 12px", lineHeight:1.6 }}>写真・測定値・GPS・メモを含む完全なバックアップ。新しいiPhoneへの移行に使えます。</p>
-              <button onClick={() => {
-                // 写真込みの完全JSON
-                const json = JSON.stringify(trees, null, 2);
+              <p style={{ fontSize:14, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px" }}>📦 完全バックアップ（おすすめ）</p>
+              <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 12px", lineHeight:1.6 }}>大きな木＋きのこ図鑑を1ファイルにまとめてバックアップ。新しいiPhoneへの移行に使えます。</p>
+              <button onClick={async () => {
+                const km = await loadMushroomsDB();
+                const data = { trees, mushrooms: km, exportedAt: today(), version: "1.0" };
+                const json = JSON.stringify(data, null, 2);
                 const blob = new Blob([json], { type:"application/json" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
@@ -1973,14 +1976,14 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
                 a.click();
                 URL.revokeObjectURL(url);
               }} style={{ width:"100%", padding:"11px", background:"#1a5c3f", border:"none", borderRadius:10, color:"#fff", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
-                📦 JSONをダウンロード
+                📦 まとめてダウンロード
               </button>
             </div>
 
             {/* CSVエクスポート */}
             <div style={{ background:"rgba(116,179,206,0.08)", border:"1.5px solid rgba(116,179,206,0.3)", borderRadius:12, padding:"14px 16px", marginBottom:12 }}>
-              <p style={{ fontSize:14, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px" }}>📊 CSVエクスポート（表計算用）</p>
-              <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 12px", lineHeight:1.6 }}>Excelで開ける形式。報告書作成・データ集計に便利。写真は含まれません。</p>
+              <p style={{ fontSize:14, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px" }}>📊 CSV（大きな木・表計算用）</p>
+              <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 12px", lineHeight:1.6 }}>Excelで開ける形式。報告書・データ集計に。写真は含まれません。</p>
               <button onClick={() => {
                 const header = ["名前","樹種","場所","樹高(m)","幹周り(cm)","枝張り(m)","推定樹齢(年)","緯度","経度","メモ","登録日","更新日"];
                 const rows = trees.map(t => [
@@ -1992,7 +1995,7 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
                   t.createdAt||"", t.updatedAt||""
                 ]);
                 const csv = [header, ...rows].map(r => r.join(",")).join("\n");
-                const bom = "\uFEFF"; // Excel文字化け防止
+                const bom = "\uFEFF";
                 const blob = new Blob([bom + csv], { type:"text/csv;charset=utf-8" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
@@ -2001,14 +2004,39 @@ function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, o
                 a.click();
                 URL.revokeObjectURL(url);
               }} style={{ width:"100%", padding:"11px", background:"#2a4a7a", border:"none", borderRadius:10, color:"#fff", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
-                📊 CSVをダウンロード
+                📊 大きな木CSVをダウンロード
               </button>
             </div>
 
-            {/* JSONインポート */}
+            {/* JSONインポート（一括復元） */}
             <div style={{ background:"rgba(255,255,255,0.8)", border:"1.5px solid rgba(45,106,79,0.2)", borderRadius:12, padding:"14px 16px", marginBottom:16 }}>
               <p style={{ fontSize:14, fontWeight:"bold", color:"#1a3a2a", margin:"0 0 4px" }}>📂 JSONインポート（データ復元）</p>
-              <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 12px", lineHeight:1.6 }}>バックアップJSONから復元します。既存データと重複しないものが追加されます。</p>
+              <p style={{ fontSize:12, color:"#5a8c6a", margin:"0 0 12px", lineHeight:1.6 }}>バックアップJSONから復元。大きな木＋きのこ図鑑をまとめて復元できます。</p>
+              <input ref={importRef} type="file" accept=".json" style={{ display:"none" }} onChange={async e => {
+                const f = e.target.files[0]; if (!f) return;
+                try {
+                  const text = await f.text();
+                  const data = JSON.parse(text);
+                  if (data.trees && data.mushrooms) {
+                    const tc = data.trees.length, kc = data.mushrooms.length;
+                    if (!window.confirm(`大きな木 ${tc}本・きのこ図鑑 ${kc}種をインポートしますか？\n既存データと合わせて保存されます。`)) return;
+                    const mergedTrees = [...data.trees, ...trees.filter(t => !data.trees.find(d => d.id===t.id))];
+                    onUpdate(mergedTrees);
+                    const km = await loadMushroomsDB();
+                    const mergedKm = [...data.mushrooms, ...km.filter(m => !data.mushrooms.find(d => d.id===m.id))];
+                    await saveMushroomsDB(mergedKm);
+                    alert(`✅ 大きな木 ${tc}本・きのこ図鑑 ${kc}種をインポートしました`);
+                  } else if (Array.isArray(data)) {
+                    if (!window.confirm(`${data.length}本のデータをインポートしますか？`)) return;
+                    const merged = [...data, ...trees.filter(t => !data.find(d => d.id===t.id))];
+                    onUpdate(merged);
+                    alert(`✅ ${data.length}本をインポートしました`);
+                  } else { throw new Error("形式エラー"); }
+                } catch(err) {
+                  alert("❌ インポート失敗: ファイルの形式が正しくありません");
+                }
+                e.target.value = "";
+              }} />
               <button onClick={() => { setShowExport(false); setTimeout(()=>importRef.current?.click(), 100); }}
                 style={{ width:"100%", padding:"11px", background:"rgba(45,106,79,0.1)", border:"1.5px solid rgba(45,106,79,0.3)", borderRadius:10, color:"#1a3a2a", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
                 📂 JSONを読み込む
