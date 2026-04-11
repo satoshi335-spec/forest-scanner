@@ -1833,7 +1833,7 @@ function WizardMeasTrunk({ prof, onMeasured, onSkip }) {
 // ================================================================
 // CARTE APP
 // ================================================================
-function CarteApp({ trees, onUpdate, onBack, onMeasureHeight, onMeasureSpread, onMeasureTrunk, initialSelectedId }) {
+function CarteApp({ trees, mushrooms, onUpdate, onBack, onMeasureHeight, onMeasureSpread, onMeasureTrunk, initialSelectedId }) {
   const [view, setView] = useState(initialSelectedId ? "detail" : "list"); // list | detail | form | wizard
   const [selected, setSelected] = useState(initialSelectedId ? trees.find(t=>t.id===initialSelectedId)||null : null);
   const [editing, setEditing] = useState(null);
@@ -3482,7 +3482,7 @@ export default function App() {
           onSaveTree={(nt,eid,meas) => { if (pendingTreeId) { updateTrees(trees.map(t => t.id===pendingTreeId ? { ...t, measurements:{ ...t.measurements, ...meas }, updatedAt:today() } : t)); setPendingTreeId(null); setPendingTreeName(null); setPendingDist(null); setMode("carte"); } else { onSaveTree(nt,eid,meas); } }}
           onBack={()=>{ setPendingDist(null); setMode(null); }}/>}
         {mode==="trunk"&&<TrunkApp prof={prof} trees={trees} pendingTreeId={pendingTreeId} pendingTreeName={pendingTreeName} onSaveTree={(nt,eid,meas) => { if (pendingTreeId) { updateTrees(trees.map(t => t.id===pendingTreeId ? { ...t, measurements:{ ...t.measurements, ...meas }, updatedAt:today() } : t)); setPendingTreeId(null); setPendingTreeName(null); setMode("carte"); } else { onSaveTree(nt,eid,meas); } }} onBack={()=>setMode(null)}/>}
-        {mode==="carte"&&<CarteApp trees={trees} onUpdate={updateTrees} onBack={()=>{ setMapSelectedId(null); setMode(null); }} onMeasureHeight={onMeasureHeight} onMeasureSpread={onMeasureSpread} onMeasureTrunk={onMeasureTrunk} initialSelectedId={mapSelectedId}/>}
+        {mode==="carte"&&<CarteApp trees={trees} mushrooms={mushrooms} onUpdate={updateTrees} onBack={()=>{ setMapSelectedId(null); setMode(null); }} onMeasureHeight={onMeasureHeight} onMeasureSpread={onMeasureSpread} onMeasureTrunk={onMeasureTrunk} initialSelectedId={mapSelectedId}/>}
         {mode==="map"&&<MapApp trees={trees} onSelectTree={onSelectTree} onBack={()=>setMode(null)}/>}
         {mode==="kinoko"&&<KinokoApp onBack={()=>setMode(null)}/>}
         {mode==="help"&&<HelpApp onBack={()=>setMode(null)}/>}
