@@ -2596,15 +2596,7 @@ async function saveTreeImage(tree) {
     ctx.fillText("🌳", W / 2, H * 0.45);
   }
 
-  // ── 下部グラデーション（名前エリア） ──
-  const nameGrad = ctx.createLinearGradient(0, H * 0.62, 0, H);
-  nameGrad.addColorStop(0, "rgba(0,0,0,0)");
-  nameGrad.addColorStop(0.4, "rgba(0,0,0,0.55)");
-  nameGrad.addColorStop(1, "rgba(0,0,0,0.82)");
-  ctx.fillStyle = nameGrad;
-  ctx.fillRect(0, H * 0.62, W, H * 0.38);
-
-  // ── 測定値（右上・背景パネル付き・見やすく） ──
+  // ── 測定値（右上・グラデーション背景付き） ──
   const measItems = [
     m.height ? { label: "樹高",    value: m.height, unit: "m",  color: "#7ecba1" } : null,
     m.trunk  ? { label: "幹周り",  value: m.trunk,  unit: "cm", color: "#74b3ce" } : null,
@@ -2614,48 +2606,76 @@ async function saveTreeImage(tree) {
 
   if (measItems.length > 0) {
     const rowH = 80;
-    const panelW = W * 0.44;
-    const panelH = measItems.length * rowH + 24;
-    const panelX = W - panelW - 16;
-    const panelY = 16;
+    const panelW = W * 0.46;
+    const panelH = measItems.length * rowH + 32;
+    const panelX = W - panelW;
+    const panelY = 0;
 
-    // 背景パネル（半透明・角丸）
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.beginPath();
-    roundRect(ctx, panelX, panelY, panelW, panelH, 14);
-    ctx.fill();
-
-    // パネル枠線
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    roundRect(ctx, panelX, panelY, panelW, panelH, 14);
-    ctx.stroke();
+    // 右上から広がるグラデーション（角丸なし・自然な感じ）
+    const measGradH = ctx.createLinearGradient(panelX, 0, W, 0);
+    measGradH.addColorStop(0, "rgba(0,0,0,0)");
+    measGradH.addColorStop(0.4, "rgba(0,0,0,0.45)");
+    measGradH.addColorStop(1, "rgba(0,0,0,0.72)");
+    const measGradV = ctx.createLinearGradient(0, panelY, 0, panelY + panelH);
+    // 縦方向は上から下へフェードアウト
+    ctx.save();
+    ctx.fillStyle = measGradH;
+    ctx.fillRect(panelX, panelY, panelW, panelH);
+    // 下端をフェードアウト
+    const fadeGrad = ctx.createLinearGradient(0, panelY + panelH * 0.6, 0, panelY + panelH);
+    fadeGrad.addColorStop(0, "rgba(0,0,0,0)");
+    fadeGrad.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = fadeGrad;
+    ctx.fillRect(panelX, panelY + panelH * 0.6, panelW, panelH * 0.4);
+    ctx.restore();
 
     const MFONT = "'Hiragino Mincho ProN', Georgia, serif";
-    const RX = W - 28;
-    let MY = panelY + 22;
+    const RX = W - 20;
+    let MY = panelY + 36;
     ctx.textAlign = "right";
-    ctx.shadowColor = "rgba(0,0,0,0.9)";
-    ctx.shadowBlur = 6;
+    ctx.shadowColor = "rgba(0,0,0,0.95)";
+    ctx.shadowBlur = 8;
 
     measItems.forEach(item => {
-      // ラベル（小さめ・白）
       ctx.font = `22px ${MFONT}`;
-      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
       ctx.fillText(item.label, RX, MY);
-      MY += 28;
-      // 値（大きく・色付き）
-      ctx.font = `bold 46px ${MFONT}`;
+      MY += 30;
+      ctx.font = `bold 48px ${MFONT}`;
       ctx.fillStyle = item.color;
-      ctx.fillText(item.value, RX - 32, MY);
-      // 単位
+      ctx.fillText(item.value, RX - 34, MY);
       ctx.font = `22px ${MFONT}`;
-      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
       ctx.fillText(item.unit, RX, MY);
-      MY += rowH - 28;
+      MY += rowH - 30;
     });
     ctx.shadowBlur = 0;
+  }
+
+  // ── 左下グラデーション（木の名前エリアのみ）──
+  // 文字が入る左端〜全体幅の40%、下から積み上がる高さ分だけ
+  {
+    const chars = Array.from(tree.name);
+    const totalTextH = chars.length * 40 + 100; // おおよその高さ
+    const gradTop = Math.max(H * 0.5, H - totalTextH);
+    const nameAreaGrad = ctx.createLinearGradient(0, gradTop, 0, H);
+    nameAreaGrad.addColorStop(0, "rgba(0,0,0,0)");
+    nameAreaGrad.addColorStop(0.5, "rgba(0,0,0,0.38)");
+    nameAreaGrad.addColorStop(1, "rgba(0,0,0,0.65)");
+    // 横方向：左端から右へフェードアウト（幅は画面の35%まで）
+    const nameAreaGradH = ctx.createLinearGradient(0, 0, W * 0.35, 0);
+    nameAreaGradH.addColorStop(0, "rgba(0,0,0,0.65)");
+    nameAreaGradH.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.save();
+    ctx.fillStyle = nameAreaGrad;
+    ctx.fillRect(0, gradTop, W * 0.35, H - gradTop);
+    ctx.restore();
+    // 最下部（記録日エリア）は全幅に薄くグラデ
+    const bottomGrad = ctx.createLinearGradient(0, H - 90, 0, H);
+    bottomGrad.addColorStop(0, "rgba(0,0,0,0)");
+    bottomGrad.addColorStop(1, "rgba(0,0,0,0.55)");
+    ctx.fillStyle = bottomGrad;
+    ctx.fillRect(0, H - 90, W, 90);
   }
 
   // ── 木の名前（右下・縦並び・控えめ・バラバラサイズ） ──
