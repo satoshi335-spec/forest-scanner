@@ -2842,7 +2842,22 @@ function KinokoApp({ onBack }) {
         }
 
         <span style={LBL}>きのこの名前（必須）：</span>
-        <input style={{ ...INP, marginBottom:12 }} type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="例: シイタケ、名前不明のきのこ"/>
+        <input style={{ ...INP, marginBottom:8 }} type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="例: シイタケ、名前不明のきのこ"/>
+        {/* Google検索ボタン */}
+        <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+          <button onClick={() => window.open("https://www.google.com/search?q=きのこ+同定+見分け方", "_blank")}
+            style={{ flex:1, padding:"9px 8px", background:"rgba(66,133,244,0.08)", border:"1.5px solid rgba(66,133,244,0.3)", borderRadius:10, color:"#4285f4", fontSize:13, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            🔍 Googleで検索
+          </button>
+          {photo && <button onClick={() => {
+            const msg = "①Googleアプリを開く\n②カメラアイコン（Googleレンズ）をタップ\n③この写真を選んで検索してください\n\nGoogleレンズのページを開きますか？";
+            if (window.confirm(msg)) {
+              window.open("https://lens.google.com", "_blank");
+            }
+          }} style={{ flex:1, padding:"9px 8px", background:"rgba(234,67,53,0.08)", border:"1.5px solid rgba(234,67,53,0.3)", borderRadius:10, color:"#ea4335", fontSize:13, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+            📷 Googleレンズで調べる
+          </button>}
+        </div>
 
         <span style={LBL}>種類（わかる場合）：</span>
         <select value={species} onChange={e=>setSpecies(e.target.value)} style={{ ...INP, marginBottom:12, fontSize:14, appearance:"none" }}>
@@ -3423,10 +3438,10 @@ export default function App() {
             setPendingDist(distStr);
             setMode("spread");
           } : null}
-          onBack={()=>setMode(null)}/>}}
+          onBack={()=>setMode(null)}/>}
         {mode==="spread"&&<SpreadApp prof={prof} trees={trees} pendingTreeId={pendingTreeId} pendingTreeName={pendingTreeName} initialDist={pendingDist}
           onSaveTree={(nt,eid,meas) => { if (pendingTreeId) { updateTrees(trees.map(t => t.id===pendingTreeId ? { ...t, measurements:{ ...t.measurements, ...meas }, updatedAt:today() } : t)); setPendingTreeId(null); setPendingTreeName(null); setPendingDist(null); setMode("carte"); } else { onSaveTree(nt,eid,meas); } }}
-          onBack={()=>{ setPendingDist(null); setMode(null); }}/>}}
+          onBack={()=>{ setPendingDist(null); setMode(null); }}/>}
         {mode==="trunk"&&<TrunkApp prof={prof} trees={trees} pendingTreeId={pendingTreeId} pendingTreeName={pendingTreeName} onSaveTree={(nt,eid,meas) => { if (pendingTreeId) { updateTrees(trees.map(t => t.id===pendingTreeId ? { ...t, measurements:{ ...t.measurements, ...meas }, updatedAt:today() } : t)); setPendingTreeId(null); setPendingTreeName(null); setMode("carte"); } else { onSaveTree(nt,eid,meas); } }} onBack={()=>setMode(null)}/>}
         {mode==="carte"&&<CarteApp trees={trees} onUpdate={updateTrees} onBack={()=>{ setMapSelectedId(null); setMode(null); }} onMeasureHeight={onMeasureHeight} onMeasureSpread={onMeasureSpread} onMeasureTrunk={onMeasureTrunk} initialSelectedId={mapSelectedId}/>}
         {mode==="map"&&<MapApp trees={trees} onSelectTree={onSelectTree} onBack={()=>setMode(null)}/>}
