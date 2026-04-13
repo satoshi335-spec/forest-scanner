@@ -2611,29 +2611,14 @@ async function saveTreeImage(tree) {
     const panelX = W - panelW;
     const panelY = 0;
 
-    // 右上コーナーから自然に広がる薄いグラデーション
-    ctx.save();
-    // 横方向：右端から左へ
-    const measGradH = ctx.createLinearGradient(panelX, 0, W, 0);
-    measGradH.addColorStop(0, "rgba(0,0,0,0)");
-    measGradH.addColorStop(1, "rgba(0,0,0,0.28)");
-    ctx.fillStyle = measGradH;
-    ctx.fillRect(panelX, panelY, panelW, panelH);
-    // 縦方向：上端から下へフェードアウト
-    const measGradV = ctx.createLinearGradient(0, panelY, 0, panelY + panelH);
-    measGradV.addColorStop(0, "rgba(0,0,0,0.18)");
-    measGradV.addColorStop(0.7, "rgba(0,0,0,0.08)");
-    measGradV.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = measGradV;
-    ctx.fillRect(panelX, panelY, panelW, panelH);
-    ctx.restore();
+    // 背景なし・影だけで視認性を確保
 
     const MFONT = "'Hiragino Mincho ProN', Georgia, serif";
     const RX = W - 20;
     let MY = panelY + 36;
     ctx.textAlign = "right";
-    ctx.shadowColor = "rgba(0,0,0,0.95)";
-    ctx.shadowBlur = 8;
+    ctx.shadowColor = "rgba(0,0,0,1)";
+    ctx.shadowBlur = 14;
 
     measItems.forEach(item => {
       ctx.font = `22px ${MFONT}`;
@@ -2657,22 +2642,7 @@ async function saveTreeImage(tree) {
     const chars = Array.from(tree.name);
     const totalTextH = chars.length * 40 + 100; // おおよその高さ
     const gradTop = Math.max(H * 0.5, H - totalTextH);
-    // 縦方向グラデ（薄め）
-    const nameAreaGrad = ctx.createLinearGradient(0, gradTop, 0, H);
-    nameAreaGrad.addColorStop(0, "rgba(0,0,0,0)");
-    nameAreaGrad.addColorStop(0.6, "rgba(0,0,0,0.18)");
-    nameAreaGrad.addColorStop(1, "rgba(0,0,0,0.35)");
-    // 横方向：左端から右へフェードアウト
-    ctx.save();
-    ctx.fillStyle = nameAreaGrad;
-    ctx.fillRect(0, gradTop, W * 0.38, H - gradTop);
-    ctx.restore();
-    // 最下部（記録日エリア）全幅に極薄グラデ
-    const bottomGrad = ctx.createLinearGradient(0, H - 80, 0, H);
-    bottomGrad.addColorStop(0, "rgba(0,0,0,0)");
-    bottomGrad.addColorStop(1, "rgba(0,0,0,0.35)");
-    ctx.fillStyle = bottomGrad;
-    ctx.fillRect(0, H - 80, W, 80);
+    // 背景なし
   }
 
   // ── 木の名前（右下・縦並び・控えめ・バラバラサイズ） ──
@@ -2690,8 +2660,8 @@ async function saveTreeImage(tree) {
   const sizes = chars.map((_, i) => Math.round(BASE - VARIANCE/2 + rng(i) * VARIANCE));
 
   // 左縦書き（下から上へ・左下スタイル）
-  ctx.shadowColor = "rgba(0,0,0,0.75)";
-  ctx.shadowBlur = 10;
+  ctx.shadowColor = "rgba(0,0,0,1)";
+  ctx.shadowBlur = 16;
   ctx.textAlign = "left";
   ctx.fillStyle = "rgba(255,255,255,0.82)";
 
@@ -2715,9 +2685,10 @@ async function saveTreeImage(tree) {
   });
 
   // 記録日・アプリ名（最下部）
-  ctx.shadowBlur = 6;
+  ctx.shadowColor = "rgba(0,0,0,1)";
+  ctx.shadowBlur = 12;
   ctx.font = `22px ${FONT}`;
-  ctx.fillStyle = "rgba(255,255,255,0.38)";
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
   ctx.textAlign = "left";
   ctx.fillText(tree.updatedAt, 52, H - 48);
   ctx.textAlign = "right";
