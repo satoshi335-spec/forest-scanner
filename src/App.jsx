@@ -2809,6 +2809,89 @@ async function saveMushroomsDB(items) {
   });
 }
 
+
+// ================================================================
+// きのこ記録画像生成
+// ================================================================
+async function saveKinokoImage(mushroom) {
+  const W = 1080, H = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  const FONT = "'Hiragino Mincho ProN','Yu Mincho',Georgia,serif";
+  const ed = EDIBILITY.find(e => e.value === (mushroom.edibility||"unknown")) || EDIBILITY[2];
+
+  // 背景（写真 or グラデ）
+  if (mushroom.photo) {
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.max(W/img.width, H/img.height);
+        const sw = img.width*scale, sh = img.height*scale;
+        ctx.drawImage(img, (W-sw)/2, (H-sh)/2, sw, sh);
+        resolve();
+      };
+      img.onerror = resolve;
+      img.src = mushroom.photo;
+    });
+  } else {
+    const bg = ctx.createLinearGradient(0,0,0,H);
+    bg.addColorStop(0,"#1a2a1a"); bg.addColorStop(1,"#0a1f0a");
+    ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+    ctx.font = `280px serif`; ctx.textAlign="center";
+    ctx.fillText("🍄", W/2, H*0.45);
+  }
+
+  // 下部グラデ
+  const grad = ctx.createLinearGradient(0, H*0.55, 0, H);
+  grad.addColorStop(0,"rgba(0,0,0,0)");
+  grad.addColorStop(0.5,"rgba(0,0,0,0.55)");
+  grad.addColorStop(1,"rgba(0,0,0,0.85)");
+  ctx.fillStyle = grad; ctx.fillRect(0, H*0.55, W, H*0.45);
+
+  // 食毒バッジ（右上）
+  ctx.shadowColor="rgba(0,0,0,0.8)"; ctx.shadowBlur=12;
+  ctx.font = `bold 52px ${FONT}`;
+  ctx.textAlign = "right";
+  ctx.fillStyle = ed.color==="unknown"?"rgba(255,255,255,0.9)":ed.color;
+  ctx.fillText(`${ed.emoji} ${ed.label}`, W-48, 90);
+  ctx.shadowBlur = 0;
+
+  // 名前（下部大きく）
+  ctx.shadowColor="rgba(0,0,0,1)"; ctx.shadowBlur=18;
+  ctx.textAlign = "left";
+  ctx.font = `bold 88px ${FONT}`;
+  ctx.fillStyle = "#ffffff";
+  // 長い名前は折り返し
+  const nameChars = Array.from(mushroom.name);
+  const maxW = W - 96;
+  let line = "", lines = [];
+  for (const ch of nameChars) {
+    const test = line + ch;
+    if (ctx.measureText(test).width > maxW) { lines.push(line); line = ch; }
+    else line = test;
+  }
+  lines.push(line);
+  let nameY = H - 220 - (lines.length-1)*100;
+  lines.forEach(l => { ctx.fillText(l, 48, nameY); nameY += 100; });
+
+  // 種類・場所
+  ctx.font = `44px ${FONT}`;
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  if (mushroom.species) ctx.fillText(`🍄 ${mushroom.species}`, 48, H-150);
+  if (mushroom.location) ctx.fillText(`📍 ${mushroom.location}`, 48, H-96);
+
+  // 日付・アプリ名
+  ctx.font = `32px ${FONT}`;
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.fillText(mushroom.createdAt, 48, H-44);
+  ctx.textAlign = "right";
+  ctx.fillText("大きな木 Myきのこ図鑑", W-48, H-44);
+  ctx.shadowBlur = 0;
+
+  return canvas.toDataURL("image/png");
+}
+
 function KinokoApp({ onBack }) {
   const [mushrooms, setMushrooms] = useState([]);
   const [view, setView]       = useState("list"); // list | detail | form
@@ -2817,6 +2900,7 @@ function KinokoApp({ onBack }) {
   const [filterEd, setFilterEd] = useState("all");
   // form state
   const [editId, setEditId]   = useState(null);
+  const [kinokoPreview, setKinokoPreview] = useState(null);
   const [photo, setPhoto]     = useState(null);
   const [name, setName]       = useState("");
   const [species, setSpecies] = useState("");
@@ -2959,12 +3043,42 @@ function KinokoApp({ onBack }) {
           <p style={{ fontSize:11, color:"#aaa", margin:"8px 0 0" }}>登録：{cur.createdAt}　更新：{cur.updatedAt}</p>
         </div>
 
+        {/* 記録画像保存ボタン */}
+        <button onClick={async () => { const d = await saveKinokoImage(cur); setKinokoPreview(d); }}
+          style={{ width:"100%", padding:"13px", background:"rgba(45,106,79,0.08)", border:"1.5px solid rgba(45,106,79,0.3)", borderRadius:12, color:"#2d6a4f", fontSize:14, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+          📸　記録画像を保存する
+        </button>
+
         {/* 食毒注意 */}
         {(cur.edibility==="toxic"||cur.edibility==="unknown"||cur.edibility==="inedible") && <div style={{ background:"rgba(192,57,43,0.06)", border:"1.5px solid rgba(192,57,43,0.25)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
           <p style={{ fontSize:14, color:"#c0392b", margin:0, lineHeight:1.7, fontWeight:"bold" }}>
             ⚠️ 食毒の最終判断は必ず専門家にご確認ください。<br/>
             <span style={{ fontSize:12, fontWeight:"normal" }}>このアプリの情報は参考値です。</span>
           </p>
+        </div>}
+
+        {/* 記録画像プレビューモーダル */}
+        {kinokoPreview && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.92)", zIndex:200, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <p style={{ color:"rgba(255,255,255,0.6)", fontSize:13, margin:"0 0 12px", textAlign:"center" }}>
+            画像を長押し → 写真に保存
+          </p>
+          <img src={kinokoPreview} alt="きのこ記録" style={{ maxWidth:"100%", maxHeight:"60vh", borderRadius:12, display:"block" }}/>
+          <button onClick={async () => {
+            try {
+              const res = await fetch(kinokoPreview);
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url; a.download = `kinoko-${cur.name}-${cur.createdAt}.png`;
+              a.click(); URL.revokeObjectURL(url);
+            } catch {}
+          }} style={{ marginTop:14, padding:"13px 32px", background:"#2d6a4f", border:"none", borderRadius:12, color:"#fff", fontSize:15, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
+            💾 写真に保存
+          </button>
+          <button onClick={() => setKinokoPreview(null)}
+            style={{ marginTop:10, padding:"11px 32px", background:"none", border:"1.5px solid rgba(255,255,255,0.3)", borderRadius:12, color:"rgba(255,255,255,0.7)", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
+            閉じる
+          </button>
         </div>}
       </div>
     );
