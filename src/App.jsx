@@ -3059,24 +3059,30 @@ function KinokoApp({ onBack }) {
 
         {/* 記録画像プレビューモーダル */}
         {kinokoPreview && <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.92)", zIndex:200, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:20 }}>
-          <p style={{ color:"rgba(255,255,255,0.6)", fontSize:13, margin:"0 0 12px", textAlign:"center" }}>
-            画像を長押し → 写真に保存
+          <p style={{ color:"rgba(255,255,255,0.55)", fontSize:12, margin:"0 0 10px", textAlign:"center" }}>
+            下の「写真に保存」ボタン、または画像を長押しして保存してください
           </p>
-          <img src={kinokoPreview} alt="きのこ記録" style={{ maxWidth:"100%", maxHeight:"60vh", borderRadius:12, display:"block" }}/>
+          <img src={kinokoPreview} alt="きのこ記録" style={{ maxWidth:"100%", maxHeight:"55vh", borderRadius:12, display:"block" }}/>
           <button onClick={async () => {
             try {
               const res = await fetch(kinokoPreview);
               const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url; a.download = `kinoko-${cur.name}-${cur.createdAt}.png`;
-              a.click(); URL.revokeObjectURL(url);
-            } catch {}
-          }} style={{ marginTop:14, padding:"13px 32px", background:"#2d6a4f", border:"none", borderRadius:12, color:"#fff", fontSize:15, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
-            💾 写真に保存
+              const file = new File([blob], (cur?.name||"kinoko")+"_記録.png", { type:"image/png" });
+              if (navigator.canShare && navigator.canShare({ files:[file] })) {
+                await navigator.share({ files:[file], title: cur?.name||"きのこ" });
+              } else {
+                alert("長押しして「写真に保存」を選んでください");
+              }
+            } catch(e) {
+              if (e.name !== "AbortError") alert("長押しして「写真に保存」を選んでください");
+            }
+          }} style={{ marginTop:14, padding:"14px 0", width:"100%", maxWidth:280, background:"#2d6a4f", border:"none", borderRadius:12, color:"#fff", fontSize:16, cursor:"pointer", fontFamily:"inherit", fontWeight:"bold" }}>
+            📷　写真に保存する
           </button>
-          <button onClick={() => setKinokoPreview(null)}
-            style={{ marginTop:10, padding:"11px 32px", background:"none", border:"1.5px solid rgba(255,255,255,0.3)", borderRadius:12, color:"rgba(255,255,255,0.7)", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
+          <p style={{ color:"rgba(126,203,161,0.7)", fontSize:11, margin:"8px 0 4px", textAlign:"center" }}>
+            または画像を長押し →「写真に保存」
+          </p>
+          <button onClick={() => setKinokoPreview(null)} style={{ marginTop:6, padding:"11px 40px", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.2)", borderRadius:12, color:"rgba(255,255,255,0.6)", fontSize:14, cursor:"pointer", fontFamily:"inherit" }}>
             閉じる
           </button>
         </div>}
