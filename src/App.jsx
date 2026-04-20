@@ -231,28 +231,20 @@ const TREE_TYPES = [
 // CAMERA HOOK
 // ================================================================
 // カメラのFOVをiPhoneの焦点距離から自動取得
-async function detectCameraFOV() {
+// 既存のストリームからFOVを推定（カメラを二重起動しない）
+function estimateFOVFromStream(stream) {
   try {
-    const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode:"environment" } });
-    const track = s.getVideoTracks()[0];
+    const track = stream.getVideoTracks()[0];
+    if (!track) return { hFov:60, vFov:45, source:"default" };
     const settings = track.getSettings();
-    const caps = track.getCapabilities?.() || {};
-    s.getTracks().forEach(t => t.stop());
-    // focalLength が取得できる場合（一部Android）
-    if (settings.focalLength && caps.focalLength) {
-      const sensorW = caps.focalLength?.max ? 6.17 : 4.8; // 概算センサー幅mm
-      const fovH = 2 * Math.atan(sensorW / 2 / settings.focalLength) * 180 / Math.PI;
-      return { hFov: +fovH.toFixed(1), vFov: +(fovH * 0.75).toFixed(1), source: "sensor" };
-    }
-    // 解像度から推定（iPhone標準カメラ近似）
     const w = settings.width || 1920, h = settings.height || 1080;
     const aspect = w / h;
     // iPhone 広角: 水平約69°、縦約54°
     const hFov = aspect > 1.5 ? 69 : 60;
     const vFov = Math.round(hFov / aspect);
-    return { hFov, vFov, source: "estimated" };
+    return { hFov, vFov, source:"estimated" };
   } catch {
-    return { hFov: 60, vFov: 45, source: "default" };
+    return { hFov:60, vFov:45, source:"default" };
   }
 }
 
@@ -288,9 +280,9 @@ function useCameraAndSensor(onOrient) {
       streamRef.current = s;
       if (videoRef.current) { videoRef.current.srcObject = s; await videoRef.current.play(); }
       setCameraOn(true);
-      // FOV検出（キャッシュなければ）
+      // FOV推定（既存ストリームから・カメラを二重起動しない）
       if (!getCachedFOV()) {
-        const detected = await detectCameraFOV();
+        const detected = estimateFOVFromStream(s);
         setCachedFOV(detected);
         setFov(detected);
       }
