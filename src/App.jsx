@@ -747,7 +747,7 @@ function HeightApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
   const [top, setTop] = useState(null); const [bot, setBot] = useState(null);
   const [result, setResult] = useState(null); const [showSave, setShowSave] = useState(false);
   const dummyOrient = useCallback(() => {}, []);
-  const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(dummyOrient);
+  const { sensorOn, cameraOn, videoRef, startAll, stopCamera, fov } = useCameraAndSensor(dummyOrient);
   const canCalc = top!==null&&bot!==null&&!!dist&&!!eyeH;
   const doCalc = () => {
     if (!canCalc) return; stopCamera();
@@ -875,7 +875,7 @@ function SpreadApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTree
   const [left, setLeft] = useState(null); const [right, setRight] = useState(null);
   const [result, setResult] = useState(null); const [showSave, setShowSave] = useState(false);
   const dummyOrient = useCallback(() => {}, []);
-  const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(dummyOrient);
+  const { sensorOn, cameraOn, videoRef, startAll, stopCamera, fov } = useCameraAndSensor(dummyOrient);
   const canCalc = left!==null&&right!==null&&!!dist;
   // initialDist があれば距離入力をスキップしてpg=2から開始
   useEffect(() => { if (initialDist) { setDist(initialDist); setPg(2); } }, [initialDist]);
@@ -1257,7 +1257,7 @@ function TrunkApp({ prof, trees, onSaveTree, onBack, pendingTreeId, pendingTreeN
   const [result, setResult] = useState(null); const [showSave, setShowSave] = useState(false);
   const gammaRef = useRef(null);
   const onOrient = useCallback(e => { if (e.gamma==null) return; let v = +e.gamma.toFixed(1); v = Math.max(-89,Math.min(89,v)); gammaRef.current=v; setLiveGamma(v); }, []);
-  const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(onOrient);
+  const { sensorOn, cameraOn, videoRef, startAll, stopCamera, fov } = useCameraAndSensor(onOrient);
   const shown = liveGamma??0; const canCalc = left!==null&&right!==null&&!!dist;
   const doCalc = () => {
     if (!canCalc) return; stopCamera();
@@ -1685,7 +1685,7 @@ function WizardMeasHeight({ prof, trunkSteps, onMeasured, onSkip }) {
   const [eyeH, setEyeH] = useState(prof.eyeH||"1.5");
   const [showCam, setShowCam] = useState(false);
   const dummyOrient = useCallback(() => {}, []);
-  const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(dummyOrient);
+  const { sensorOn, cameraOn, videoRef, startAll, stopCamera, fov } = useCameraAndSensor(dummyOrient);
   const canCalc = top!==null&&bot!==null&&!!dist&&!!eyeH;
 
   // 歩幅を取得
@@ -1801,7 +1801,7 @@ function WizardMeasSpread({ prof, initialDist, onMeasured, onSkip }) {
   const [distMode, setDistMode] = useState(1);
   const [showCam, setShowCam] = useState(!!initialDist);
   const dummyOrient = useCallback(() => {}, []);
-  const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(dummyOrient);
+  const { sensorOn, cameraOn, videoRef, startAll, stopCamera, fov } = useCameraAndSensor(dummyOrient);
   const canCalc = left!==null&&right!==null&&!!dist;
 
   const doCalc = () => {
@@ -1852,7 +1852,7 @@ function WizardMeasTrunk({ prof, onMeasured, onSkip }) {
   const [distMode, setDistMode] = useState(1);
   const [showCam, setShowCam] = useState(false);
   const dummyOrient = useCallback(() => {}, []);
-  const { sensorOn, cameraOn, videoRef, startAll, stopCamera } = useCameraAndSensor(dummyOrient);
+  const { sensorOn, cameraOn, videoRef, startAll, stopCamera, fov } = useCameraAndSensor(dummyOrient);
   const canCalc = left!==null&&right!==null&&!!dist;
 
   const doCalc = () => {
